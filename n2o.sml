@@ -1,6 +1,10 @@
 structure N2O = struct
 
 open TextIO
+
+datatype 'a cx1 = MkCx of string * ('a hnd)
+and 'a hnd = MkHnd of 'a cx1 -> 'a cx1;
+
 structure SU = SockUtil
 
 fun connMain s =
