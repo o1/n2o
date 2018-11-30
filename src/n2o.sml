@@ -32,11 +32,11 @@ functor MkCx(M: sig
                  val handlers : (t Hnd) list
                  val protos : ((t prot) Proto) list
              end) :> CX = struct
-    type t = M.t
-    type 'a prot = 'a M.prot
-    val cx = { req = mkReq (), module = mod_ }
-    val handlers = M.handlers
-    val protos = M.protos
+type t = M.t
+type 'a prot = 'a M.prot
+val cx = { req = mkReq (), module = mod_ }
+val handlers = M.handlers
+val protos = M.protos
 end
 
 signature N2O = sig
