@@ -54,13 +54,21 @@ functor MkN2O(M: sig
 type t = M.t
 type 'a prot = 'a M.prot
 structure Ctx = MkCx(M)
-fun run _ nil = Empty
-  | run msg (proto::protos) =
-    case proto msg of
-        Unknown => run msg protos
-      | Empty => Empty
-      | Reply msg1 => Reply msg1
-      | _ => run msg protos
+fun run msg =
+    let
+        fun loop _ [] = Empty
+          | loop msg (proto::protos) =
+            case proto msg of
+                Unknown => loop msg protos
+              | Empty => Empty
+              | Reply msg1 => Reply msg1
+              | _ => loop msg protos
+        fun fold cx [] = cx
+          | fold cx (h::hs) = fold (h cx) hs
+    in
+        fold Ctx.cx Ctx.handlers;
+        loop msg Ctx.protos
+    end
 end
 
 (* protocols *)
