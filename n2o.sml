@@ -33,8 +33,11 @@ fun cml_main (program_name, arglist) =
     end
 
 fun main (program_name, arglist) =
-    (UnixSignals.setHandler (UnixSignals.sigPIPE, UnixSignals.IGNORE);
+    let
+        open MLton.Signal
+    in
+    (setHandler (Posix.Signal.pipe, Handler.ignore);
      RunCML.doit (fn () => cml_main(program_name, arglist), NONE);
      OS.Process.success)
-
+    end
 end
