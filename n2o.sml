@@ -41,3 +41,5 @@ fun main (program_name, arglist) =
      OS.Process.success)
     end
 end
+
+val _ = N2O.main ("test", nil)
