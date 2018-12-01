@@ -18,20 +18,25 @@ type 'a Cx = { req : Req, module : 'a Ev -> 'a Res
 type 'a Hnd = 'a Cx -> 'a Cx
 val 'a mod_ : 'a Ev -> 'a Res = fn _ => Empty
 
-signature CX = sig
+signature BASE =
+sig
     type t
     type 'a prot
-    val cx : t Cx
+end
+
+signature BASE_EXT =
+sig
+    include BASE
     val handlers : (t Hnd) list
     val protos : ((t prot) Proto) list
 end
 
-functor MkCx(M: sig
-                 type t
-                 type 'a prot
-                 val handlers : (t Hnd) list
-                 val protos : ((t prot) Proto) list
-             end) :> CX = struct
+signature CX = sig
+    include BASE_EXT
+    val cx : t Cx
+end
+
+functor MkCx(M: BASE_EXT) :> CX = struct
 type t = M.t
 type 'a prot = 'a M.prot
 val cx = { req = mkReq (), module = mod_ }
@@ -40,17 +45,11 @@ val protos = M.protos
 end
 
 signature N2O = sig
-    type t
-    type 'a prot
+    include BASE
     val run : t prot -> ((t prot) Proto) list -> (t prot) Res
 end
 
-functor MkN2O(M: sig
-                  type t
-                  type 'a prot
-                  val handlers : (t Hnd) list
-                  val protos : ((t prot) Proto) list
-              end) = struct
+functor MkN2O(M: BASE_EXT) = struct
 type t = M.t
 type 'a prot = 'a M.prot
 structure Ctx = MkCx(M)
@@ -59,10 +58,10 @@ fun run msg =
         fun loop _ [] = Empty
           | loop msg (proto::protos) =
             case proto msg of
-                Unknown => loop msg protos
-              | Empty => Empty
+                Unknown    => loop msg protos
+              | Empty      => Empty
               | Reply msg1 => Reply msg1
-              | _ => loop msg protos
+              | _          => loop msg protos
         fun fold cx [] = cx
           | fold cx (h::hs) = fold (h cx) hs
     in
