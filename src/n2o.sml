@@ -39,7 +39,7 @@ end
 functor MkCx(M: BASE_EXT) :> CX = struct
 type t = M.t
 type 'a prot = 'a M.prot
-val cx = { req = mkReq (), module = mod_ }
+val cx = { req = mkReq ():Req, module = mod_ } : t Cx
 val handlers = M.handlers
 val protos = M.protos
 end

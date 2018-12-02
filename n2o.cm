@@ -2,6 +2,6 @@ Group is
         $cml/basis.cm
         $cml/cml.cm
         $cml-lib/smlnj-lib.cm
-        n2o.sml
-        server.sml
+        src/n2o.sml
+        src/server.sml
 
