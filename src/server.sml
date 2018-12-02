@@ -1,4 +1,4 @@
-structure Server = struct
+functor MkServer(M: SIGNAL) = struct
 
 type Req = { path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
@@ -93,13 +93,8 @@ fun cml_main (program_name, arglist) =
     end
 
 fun main (program_name, arglist) =
-    let
-        open MLton.Signal
-    in
-        (setHandler (Posix.Signal.pipe, Handler.ignore);
-         RunCML.doit (fn () => cml_main(program_name, arglist), NONE);
-         OS.Process.success)
-    end
+    (M.setPipeHandler ();
+     RunCML.doit (fn () => cml_main(program_name, arglist), NONE);
+     OS.Process.success)
 end
 
-val _ = Server.main ("test", nil)

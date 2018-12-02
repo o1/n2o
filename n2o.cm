@@ -3,5 +3,7 @@ Group is
         $cml/cml.cm
         $cml-lib/smlnj-lib.cm
         src/n2o.sml
+        src/signal.sig
         src/server.sml
+        src/main-smlnj.sml
 
