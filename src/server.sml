@@ -58,6 +58,7 @@ fun sendBytes sock bytes =
     before Socket.close sock
 
 fun sendList sock lst = sendBytes sock (Word8Vector.concat lst)
+
 fun sendStr sock str = sendBytes sock (Byte.stringToBytes str)
 
 fun connMain sock =
