@@ -1,5 +1,5 @@
 functor MkServer(M: SIGNAL) = struct
-type Req = { path : string, headers : (string*string) list }
+type Req = { cmd : string, path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
 exception BadRequest
 exception NotFound of string
@@ -35,7 +35,7 @@ fun parseReq slc : Req =
         nil => raise BadRequest
       | lines as (hd::tl) =>
         case tokens' hd " " of
-            "GET"::path::_ => { path = path, headers = parseHeaders tl }
+            "GET"::path::_ => { cmd = "GET", path = path, headers = parseHeaders tl }
           | _ => raise BadRequest
 
 fun needUpgrade req = false (*TODO*)
@@ -85,9 +85,8 @@ fun serve sock : Resp =
     in
         if needUpgrade req then
             raise BadRequest (*TODO*)
-        else
-            (fileResp ("static/html" ^ reqPath ^ ".html"))
-               handle Io => (fileResp (String.extract (path, 1, NONE))) handle Io => raise NotFound path
+        else (fileResp ("static/html" ^ reqPath ^ ".html"))
+             handle Io => (fileResp (String.extract (path, 1, NONE))) handle Io => raise NotFound path
     end
 
 fun connMain sock =
