@@ -69,9 +69,9 @@ fun sendResp sock {status=status,headers=headers,body=body} =
          @ [Byte.stringToBytes "\r\n", body])
 
 fun sendError sock code body =
-    print body
-    before sendResp sock {status=code,headers=[],body=Byte.stringToBytes body}
-    before Socket.close sock
+    (print body;
+     sendResp sock {status=code,headers=[],body=Byte.stringToBytes body};
+     Socket.close sock)
 
 fun serve sock : Resp =
     let
@@ -91,7 +91,7 @@ fun serve sock : Resp =
 
 fun connMain sock =
     (case serve sock of
-         resp => sendResp sock resp before Socket.close sock)
+         resp => sendResp sock resp; Socket.close sock)
     handle BadRequest    => sendError sock 400 "Bad Request\n"
          | NotFound path => sendError sock 404 ("Not Found: "^path^"\n")
 
