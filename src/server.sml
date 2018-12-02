@@ -13,11 +13,12 @@ fun tokens slc (sep : string) =
 		        then (Word8VectorSlice.subslice (slc, mark, SOME ((i-mark)-sepLen)))::acc
 		        else acc
 	      fun recur mark i [] acc = recur i i lst (collect mark i sepLen acc)
-		      | recur mark i (b::bs) acc = if i = len
-					                             then List.rev (collect mark i 0 acc)
-					                             else if b = Word8VectorSlice.sub (slc, i)
-					                             then recur mark (i+1) bs acc
-                                       else recur mark (i+1) lst acc
+		      | recur mark i (b::bs) acc =
+            if i = len
+            then List.rev (collect mark i 0 acc)
+					  else if b = Word8VectorSlice.sub (slc, i)
+					  then recur mark (i+1) bs acc
+            else recur mark (i+1) lst acc
     in recur 0 0 lst [] end
 fun recv sock : Resp =
     let
