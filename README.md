@@ -6,7 +6,7 @@ CML loop with INetSock.TCP acceptor loop.
 
 ```
 $ mlton n2o.mlb && ./n2o
-$ ml-build n2o.cm Server.main && exec sml @SMLload=n2o
+$ ml-build n2o.cm Server.main n2o.nj && exec sml @SMLload=n2o.nj
 ```
 
 Go to http://localhost:8989/index
