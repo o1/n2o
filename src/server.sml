@@ -1,6 +1,8 @@
 structure Http = struct
+
 type Req = { path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
+
 exception BadRequest
 exception NotFound of string
 
@@ -22,33 +24,36 @@ fun tokens slc (sep : string) =
         val sepLen = String.size sep
      in recur slc lst len sepLen 0 0 lst [] end
 
+fun reply data =
+    { status   = 200,
+      body     = data,
+      headers  = [("Content-Type", "text/html"),
+                  ("Content-Length", Int.toString (Word8Vector.length data))] }
+
+fun processReq req =
+    let val stream   = BinIO.openIn req
+        val data     = BinIO.inputAll stream
+        val ()       = BinIO.closeIn stream
+     in reply data end handle Io => raise NotFound req
+
+fun processPath path =
+    processReq ("static/html/" ^ path ^ ".html")
+
+fun unreq hd = case map (Byte.bytesToString o Word8VectorSlice.vector) (tokens hd " ") of
+    nil => raise BadRequest
+    | "GET"::path::_ => processPath path
+    | _ => raise BadRequest
+
+fun untokens list = case list of
+    nil => raise BadRequest
+    | hd::tl => unreq hd
+
 fun recv sock : Resp =
-    let val slc = Word8VectorSlice.full (Socket.recvVec (sock, 2048))
-    in case tokens slc "\r\n" of
-            nil => raise BadRequest
-         |  (hd::tl) =>
-            case map (Byte.bytesToString o Word8VectorSlice.vector) (tokens hd " ") of
-                 nil => raise BadRequest
-              | "GET"::path::_ =>
-                let val reqPath = "static/html/" ^ path ^ ".html"
-                 in let val stream = BinIO.openIn reqPath
-                        val data = BinIO.inputAll stream
-                        val () = BinIO.closeIn stream
-                     in { status = 200,
-                          headers = [("Content-Type", "text/html"),
-                                     ("Content-Length", Int.toString (Word8Vector.length data))],
-                          body = data }
-                    end
-                    handle Io => raise NotFound reqPath
-                end
-              | _ => raise BadRequest
-    end
+    untokens (tokens (Word8VectorSlice.full (Socket.recvVec (sock, 2048))) "\r\n")
 
 fun sendStr sock str =
-    ignore
-        (Socket.sendVec (sock, Word8VectorSlice.full (Byte.stringToBytes str)))
-    before Socket.close sock
-end
+    ignore (Socket.sendVec (sock, Word8VectorSlice.full (Byte.stringToBytes str)))
+    before Socket.close sock end
 
 structure Server = struct
 
