@@ -1,4 +1,7 @@
-structure Http = struct
+structure Server = struct
+
+open TextIO
+
 type Req = { path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
 exception BadRequest
@@ -22,7 +25,7 @@ fun tokens slc (sep : string) =
         val sepLen = String.size sep
      in recur slc lst len sepLen 0 0 lst [] end
 
-fun recv sock : Resp =
+fun serve sock : Resp =
     let val slc = Word8VectorSlice.full (Socket.recvVec (sock, 2048))
     in case tokens slc "\r\n" of
             nil => raise BadRequest
@@ -44,33 +47,34 @@ fun recv sock : Resp =
               | _ => raise BadRequest
     end
 
-fun sendStr sock str =
-    ignore
-        (Socket.sendVec (sock, Word8VectorSlice.full (Byte.stringToBytes str)))
+fun sendBytes sock bytes =
+    ignore (Socket.sendVec (sock, Word8VectorSlice.full bytes))
     before Socket.close sock
-end
 
-structure Server = struct
+fun sendList sock lst =
+    sendBytes sock (Word8Vector.concat lst)
 
-open TextIO
-open Http
+fun sendStr sock str = sendBytes sock (Byte.stringToBytes str)
 
 fun connMain sock =
     let
-        val r = recv sock
+        val resp = serve sock
+        val headers = #headers resp
+        val body = #body resp
     in
-        sendStr sock ("HTTP/1.1 200 OK\r\n"
-                      ^ (String.concat
-                             (List.map
-                                  (fn (k,v) => k ^ ": " ^ v ^ "\r\n")
-                                  (#headers r)))
-                      ^ "\r\n"
-                      ^ (Byte.bytesToString (#body r))) (* TODO: send bytes *)
-    end
-    handle BadRequest    => print "Bad Request"
-                            before sendStr sock "HTTP/1.1 400 Bad Request\r\n"
-         | NotFound path => print "Not Found"
-                            before sendStr sock "HTTP/1.1 404 Not Found\r\n"
+    sendList
+        sock
+        ([Byte.stringToBytes "HTTP/1.1 200 OK\r\n"]
+         @ (List.map
+                (fn (k,v) => Byte.stringToBytes (k ^ ": " ^ v ^ "\r\n"))
+                headers)
+            @ [Byte.stringToBytes "\r\n", body]
+           )
+         end
+         handle BadRequest    => print "Bad Request"
+                                 before sendStr sock "HTTP/1.1 400 Bad Request\r\n"
+              | NotFound path => (print "Not Found")
+                                 before sendStr sock "HTTP/1.1 404 Not Found\r\n"
 
 fun acceptLoop server_sock =
     let val (s, _) = Socket.accept server_sock
