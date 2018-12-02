@@ -1,24 +1,78 @@
+structure Http = struct
+type Req = { path : string, headers : (string*string) list }
+type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
+exception BadRequest
+exception NotFound of string
+fun tokens slc (sep : string) =
+    let
+        val lst = map (Word8.fromInt o Char.ord) (String.explode sep)
+        val len = Word8VectorSlice.length slc
+        val sepLen = String.size sep
+        fun collect mark i sepLen acc =
+		        if i > (mark + sepLen)
+		        then (Word8VectorSlice.subslice (slc, mark, SOME ((i-mark)-sepLen)))::acc
+		        else acc
+	      fun recur mark i [] acc = recur i i lst (collect mark i sepLen acc)
+		      | recur mark i (b::bs) acc = if i = len
+					                             then List.rev (collect mark i 0 acc)
+					                             else if b = Word8VectorSlice.sub (slc, i)
+					                             then recur mark (i+1) bs acc
+                                       else recur mark (i+1) lst acc
+    in recur 0 0 lst [] end
+fun recv sock : Resp =
+    let
+        val slc = Word8VectorSlice.full (Socket.recvVec (sock, 2048))
+    in
+        case tokens slc "\r\n"  of
+            nil => raise BadRequest
+         |  (hd::tl) =>
+            case map (Byte.bytesToString o Word8VectorSlice.vector) (tokens hd " ") of
+                nil => raise BadRequest
+              | "GET"::path::_ =>
+                let
+                    val reqPath = "static/html/" ^ path ^ ".html"
+                in
+                    let
+                        val stream = BinIO.openIn reqPath
+                        val data = BinIO.inputAll stream
+                        val () = BinIO.closeIn stream
+                    in
+                        { status = 200,
+                          headers = [("Content-Type", "text/html"),
+                                     ("Content-Length", Int.toString (Word8Vector.length data))],
+                          body = data }
+                    end
+                    handle Io => raise NotFound reqPath
+                end
+              | _ => raise BadRequest
+    end
+fun sendStr sock str =
+    ignore
+        (Socket.sendVec (sock, Word8VectorSlice.full (Byte.stringToBytes str)))
+    before Socket.close sock
+end
+
 structure Server = struct
 
 open TextIO
+open Http
 
-fun sendStr sock str =
+fun connMain sock =
     let
-        val slc = Word8VectorSlice.full (Byte.stringToBytes str)
+        val r = recv sock
     in
-        Socket.sendVec (sock, slc)
+        sendStr sock ("HTTP/1.1 200 OK\r\n"
+                      ^ (String.concat
+                             (List.map
+                                  (fn (k,v) => k ^ ": " ^ v ^ "\r\n")
+                                  (#headers r)))
+                      ^ "\r\n"
+                      ^ (Byte.bytesToString (#body r))) (* TODO: send bytes *)
     end
-
-fun connMain s =
-    let fun count 0 = sendStr s "Bye!\r\n"
-      | count n = (sendStr s ("Hello " ^ (Int.toString n) ^ "\r\n");
-               CML.sync (CML.timeOutEvt (Time.fromReal 0.5));
-               count (n - 1))
-    in
-        count 10;
-        print "Closing the connection.\n";
-        Socket.close s
-    end
+    handle BadRequest    => print "Bad Request"
+                            before sendStr sock "HTTP/1.1 400 Bad Request\r\n"
+         | NotFound path => print "Not Found"
+                            before sendStr sock "HTTP/1.1 404 Not Found\r\n"
 
 fun acceptLoop server_sock =
     let val (s, _) = Socket.accept server_sock
