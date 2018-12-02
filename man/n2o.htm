@@ -1,0 +1,113 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="" />
+    <meta name="author" content="Maxim Sokhatsky" />
+    <title>N2O</title>
+    <link rel="stylesheet" href="https://synrc.space/synrc.css" />
+</head>
+
+<body>
+
+<nav>
+    <a href='https://n2o.space'>ECO</a>
+    <a href='https://o1.network'>O1</a>
+    <a href='../index.html'>N2O</a>
+</nav>
+
+<header>
+    <a href="../index.html"><img src="https://o1.network/o1.svg"></a>
+    <h1>N2O</h1>
+</header>
+
+<main>
+    <section>
+        <h3>INTRO</h3>
+        <p>The <b>n2o</b> module contains request and context definition, state and N2O functors.</p>
+    </section>
+    <section>
+        <h3>REQUEST</h3>
+        <figure><figcaption>Listing 1. HTTP Request</figcaption><code>
+ type Req = { path : string
+            , method : string
+            , version : string
+            , headers : (string * string) list
+            }
+        </code></figure>
+        <figure><figcaption>Listing 2. HTTP Request Constructor</figcaption><code>
+ fun mkReq () = { path = ""
+                , method = ""
+                , version = "HTTP/1.1"
+                , headers = []
+                }
+        </code></figure>
+    </section>
+    <section>
+        <h3>CONTEXT</h3>
+        <figure><figcaption>Listing 3. N2O Protocol Closure</figcaption><code>
+ datatype 'a Ev = Init
+                | Message of 'a
+                | Terminate
+        </code></figure>
+        <figure><figcaption>Listing 4. N2O Protocol Result</figcaption><code>
+ datatype 'a Res = Reply of 'a
+                 | Ok
+                 | Unknown
+                 | Empty
+        </code></figure>
+        <figure><figcaption>Listing 5. N2O Context Record</figcaption><code>
+ type 'a Cx = { req : Req
+              , module : 'a Ev -> 'a Res
+              }
+
+ val  'a mod_ : 'a Ev -> 'a Res = fn _ => Empty
+
+ signature BASE = sig
+   type t
+   type 'a prot
+ end
+
+ signature BASE_EXT = sig
+   include BASE
+   val handlers : (t Hnd) list
+   val protos : ((t prot) Proto) list
+ end
+
+ signature CX = sig
+   include BASE_EXT
+   val cx : t Cx
+ end
+        </code></figure>
+        <figure><figcaption>Listing 6. N2O Context Constructor</figcaption><code>
+ functor MkCx (M: BASE_EXT) :> CX = struct
+   type t = M.t
+   type 'a prot = 'a M.prot
+   val cx = { req = mkReq (), module = mod_ }
+   val handlers = M.handlers
+   val protos = M.protos
+ end
+        </code></figure>
+    </section>
+    <section>
+        <h3>IO</h3>
+        <figure><figcaption>Listing 7. N2O PROTO</figcaption><code>
+ type 'a Proto = 'a -> 'a Res
+ type 'a Hnd   = 'a Cx -> 'a Cx
+        </code></figure>
+    </section>
+    <section>
+        <p>This module may refer to:
+        <b><a href="server.htm">SERVER</a></b>
+        </p>
+    </section>
+</main>
+
+<footer>
+    Made with <span class="heart">❤</span> to Standard ML
+</footer>
+
+</body>
+</html>
