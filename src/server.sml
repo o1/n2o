@@ -1,7 +1,5 @@
 structure Server = struct
 
-open TextIO
-
 type Req = { path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
 exception BadRequest
@@ -71,9 +69,9 @@ fun connMain sock =
             @ [Byte.stringToBytes "\r\n", body]
            )
          end
-         handle BadRequest    => print "Bad Request"
+         handle BadRequest    => print "Bad Request\n"
                                  before sendStr sock "HTTP/1.1 400 Bad Request\r\n"
-              | NotFound path => (print "Not Found")
+              | NotFound path => (print "Not Found\n")
                                  before sendStr sock "HTTP/1.1 404 Not Found\r\n"
 
 fun acceptLoop server_sock =
