@@ -6,17 +6,15 @@ exception NotFound of string
 
 fun collect mark i sepLen acc slc =
     if i > (mark + sepLen) then
-           (Word8VectorSlice.subslice (slc, mark, SOME ((i-mark)-sepLen)))::acc
+         (Word8VectorSlice.subslice (slc, mark, SOME ((i-mark)-sepLen)))::acc
     else acc
 
 fun recur s l len sepLen mark i [] acc =
     recur s l len sepLen i i l (collect mark i sepLen acc s)
   | recur s l len sepLen mark i (b::bs) acc =
-    if i = len then
-         List.rev (collect mark i 0 acc s)
-    else if b = Word8VectorSlice.sub (s, i) then
-         recur s l len sepLen mark (i+1) bs acc
-    else recur s l len sepLen mark (i+1) l acc
+    if i = len then List.rev (collect mark i 0 acc s)
+    else recur s l len sepLen mark (i+1)
+         (if b = Word8VectorSlice.sub (s, i) then bs else l) acc
 
 fun tokens slc (sep : string) =
     let val lst = map (Word8.fromInt o Char.ord) (String.explode sep)
