@@ -3,42 +3,38 @@ type Req = { path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
 exception BadRequest
 exception NotFound of string
+
+fun collect mark i sepLen acc slc =
+    if i > (mark + sepLen) then
+         (Word8VectorSlice.subslice (slc, mark, SOME ((i-mark)-sepLen)))::acc
+    else acc
+
+fun recur s l len sepLen mark i [] acc =
+    recur s l len sepLen i i l (collect mark i sepLen acc s)
+  | recur s l len sepLen mark i (b::bs) acc =
+    if i = len then List.rev (collect mark i 0 acc s)
+    else recur s l len sepLen mark (i+1)
+         (if b = Word8VectorSlice.sub (s, i) then bs else l) acc
+
 fun tokens slc (sep : string) =
-    let
-        val lst = map (Word8.fromInt o Char.ord) (String.explode sep)
+    let val lst = map (Word8.fromInt o Char.ord) (String.explode sep)
         val len = Word8VectorSlice.length slc
         val sepLen = String.size sep
-        fun collect mark i sepLen acc =
-		        if i > (mark + sepLen)
-		        then (Word8VectorSlice.subslice (slc, mark, SOME ((i-mark)-sepLen)))::acc
-		        else acc
-	      fun recur mark i [] acc = recur i i lst (collect mark i sepLen acc)
-		      | recur mark i (b::bs) acc =
-            if i = len
-            then List.rev (collect mark i 0 acc)
-					  else if b = Word8VectorSlice.sub (slc, i)
-					  then recur mark (i+1) bs acc
-            else recur mark (i+1) lst acc
-    in recur 0 0 lst [] end
+     in recur slc lst len sepLen 0 0 lst [] end
+
 fun recv sock : Resp =
-    let
-        val slc = Word8VectorSlice.full (Socket.recvVec (sock, 2048))
-    in
-        case tokens slc "\r\n"  of
+    let val slc = Word8VectorSlice.full (Socket.recvVec (sock, 2048))
+    in case tokens slc "\r\n" of
             nil => raise BadRequest
          |  (hd::tl) =>
             case map (Byte.bytesToString o Word8VectorSlice.vector) (tokens hd " ") of
-                nil => raise BadRequest
+                 nil => raise BadRequest
               | "GET"::path::_ =>
-                let
-                    val reqPath = "static/html/" ^ path ^ ".html"
-                in
-                    let
-                        val stream = BinIO.openIn reqPath
+                let val reqPath = "static/html/" ^ path ^ ".html"
+                 in let val stream = BinIO.openIn reqPath
                         val data = BinIO.inputAll stream
                         val () = BinIO.closeIn stream
-                    in
-                        { status = 200,
+                     in { status = 200,
                           headers = [("Content-Type", "text/html"),
                                      ("Content-Length", Int.toString (Word8Vector.length data))],
                           body = data }
@@ -47,6 +43,7 @@ fun recv sock : Resp =
                 end
               | _ => raise BadRequest
     end
+
 fun sendStr sock str =
     ignore
         (Socket.sendVec (sock, Word8VectorSlice.full (Byte.stringToBytes str)))
