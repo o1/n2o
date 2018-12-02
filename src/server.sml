@@ -1,4 +1,6 @@
-structure Http = struct
+structure Server = struct
+
+open TextIO
 
 type Req = { path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
@@ -48,34 +50,35 @@ fun untokens list = case list of
     nil => raise BadRequest
     | hd::tl => unreq hd
 
-fun recv sock : Resp =
+fun serve sock : Resp =
     untokens (tokens (Word8VectorSlice.full (Socket.recvVec (sock, 2048))) "\r\n")
 
-fun sendStr sock str =
-    ignore (Socket.sendVec (sock, Word8VectorSlice.full (Byte.stringToBytes str)))
-    before Socket.close sock end
+fun sendBytes sock bytes =
+    ignore (Socket.sendVec (sock, Word8VectorSlice.full bytes))
+    before Socket.close sock
 
-structure Server = struct
-
-open TextIO
-open Http
+fun sendList sock lst = sendBytes sock (Word8Vector.concat lst)
+fun sendStr sock str = sendBytes sock (Byte.stringToBytes str)
 
 fun connMain sock =
     let
-        val r = recv sock
+        val resp = serve sock
+        val headers = #headers resp
+        val body = #body resp
     in
-        sendStr sock ("HTTP/1.1 200 OK\r\n"
-                      ^ (String.concat
-                             (List.map
-                                  (fn (k,v) => k ^ ": " ^ v ^ "\r\n")
-                                  (#headers r)))
-                      ^ "\r\n"
-                      ^ (Byte.bytesToString (#body r))) (* TODO: send bytes *)
-    end
-    handle BadRequest    => print "Bad Request"
-                            before sendStr sock "HTTP/1.1 400 Bad Request\r\n"
-         | NotFound path => print "Not Found"
-                            before sendStr sock "HTTP/1.1 404 Not Found\r\n"
+    sendList
+        sock
+        ([Byte.stringToBytes "HTTP/1.1 200 OK\r\n"]
+         @ (List.map
+                (fn (k,v) => Byte.stringToBytes (k ^ ": " ^ v ^ "\r\n"))
+                headers)
+            @ [Byte.stringToBytes "\r\n", body]
+           )
+         end
+         handle BadRequest    => print "Bad Request"
+                                 before sendStr sock "HTTP/1.1 400 Bad Request\r\n"
+              | NotFound path => (print "Not Found")
+                                 before sendStr sock "HTTP/1.1 404 Not Found\r\n"
 
 fun acceptLoop server_sock =
     let val (s, _) = Socket.accept server_sock
@@ -106,3 +109,4 @@ fun main (program_name, arglist) =
 end
 
 val _ = Server.main ("test", nil)
+
