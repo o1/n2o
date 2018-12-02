@@ -1,5 +1,5 @@
 functor MkServer(M: SIGNAL) = struct
-
+open TextIO
 type Req = { path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
 exception BadRequest
