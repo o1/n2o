@@ -40,34 +40,19 @@ fun parseReq slc : Req =
 
 fun needUpgrade req = false (*TODO*)
 
-fun serve sock : Resp =
-    let
-        val req = parseReq (Word8VectorSlice.full (Socket.recvVec (sock, 2048)))
-        val reqPath = case #path req of
-                          "/" => "/index"
-                        | p => if String.isPrefix "/ws" p
-                               then String.extract (p, 3, NONE)
-                               else p
-    in
-        if needUpgrade req then
-            raise BadRequest (*TODO*)
-        else
-            let val filePath = "static/html" ^ reqPath ^ ".html"
-            in let val stream = BinIO.openIn filePath
-                   val data = BinIO.inputAll stream
-                   val () = BinIO.closeIn stream
-               in { status = 200,
-                    headers = [("Content-Type", "text/html"),
-                               ("Content-Length", Int.toString (Word8Vector.length data))],
-                    body = data }
-               end
-               handle Io => raise NotFound filePath
-            end
-    end
-
 fun sendBytes sock bytes = ignore (Socket.sendVec (sock, Word8VectorSlice.full bytes))
 fun sendList sock lst = sendBytes sock (Word8Vector.concat lst)
 fun sendStr sock str = sendBytes sock (Byte.stringToBytes str)
+
+fun fileResp filePath =
+    let val stream = BinIO.openIn filePath
+        val data = BinIO.inputAll stream
+        val () = BinIO.closeIn stream
+    in { status = 200,
+         headers = [("Content-Type", "text/html"),
+                    ("Content-Length", Int.toString (Word8Vector.length data))],
+         body = data }
+    end
 
 fun respCode 200 = "OK"
   | respCode 400 = "Bad Request"
@@ -87,6 +72,23 @@ fun sendError sock code body =
     print body
     before sendResp sock {status=code,headers=[],body=Byte.stringToBytes body}
     before Socket.close sock
+
+fun serve sock : Resp =
+    let
+        val req = parseReq (Word8VectorSlice.full (Socket.recvVec (sock, 2048)))
+        val path = #path req
+        val reqPath = case path of
+                          "/" => "/index"
+                        | p => if String.isPrefix "/ws" p
+                               then String.extract (p, 3, NONE)
+                               else p
+    in
+        if needUpgrade req then
+            raise BadRequest (*TODO*)
+        else
+            (fileResp ("static/html" ^ reqPath ^ ".html"))
+               handle Io => (fileResp (String.extract (path, 1, NONE))) handle Io => raise NotFound path
+    end
 
 fun connMain sock =
     (case serve sock of
