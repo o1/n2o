@@ -1,3 +1,55 @@
+structure WebSocket = struct
+datatype FrameType = ContFrame | TextFrame | BinFrame | CloseFrame | PingFrame | PongFrame
+type Frame = { fin : bool, rsv1 : bool, rsv2 : bool, rsv3 : bool,
+               typ : FrameType, payload : Word8Vector.vector }
+exception FrameParse of string
+exception NotSupported of string
+
+infix 5 &
+fun a & b = Word8.andb (a, b)
+
+fun getOctets sock n = Socket.recvVec (sock, n)
+fun getWord8 sock = Word8Vector.sub (Socket.recvVec (sock, 1), 0)
+fun getWord16be sock = PackWord16Big.subVec (Socket.recvVec (sock, 2), 0)
+fun getWord64be cursor = raise NotSupported "64-bit wide words"
+
+fun checkCtrlFrame (len : LargeWord.word) fin =
+    if not fin then raise (FrameParse "Control frames must not be fragmented")
+    else if len > 0w125 then raise (FrameParse "Control frames must not carry payload > 125 bytes")
+    else ()
+
+fun unmask key encoded =
+    Word8Vector.mapi (fn (i,el) => Word8.xorb (el, Word8Vector.sub (key, i mod 4))) encoded
+
+fun getFrame sock : Frame =
+    let
+        val b0 = getWord8 sock
+        val (fin, rsv1) = (b0 & 0wx80 = 0wx80,b0 & 0wx40 = 0wx40)
+        val (rsv2, rsv3) = (b0 & 0wx20 = 0wx20, b0 & 0w10 = 0wx10)
+        val opcode = b0 & 0wxF
+        val b1 = getWord8 sock
+        val mask : bool = b1 & 0wx80 = 0wx80
+        val lenflag = b1 & 0wx7F
+        val len = case lenflag of
+                      0w126 => getWord16be sock
+                    | 0w127 => getWord64be sock
+                    | _     => Word8.toLarge lenflag
+        val ft = case opcode of
+                     0wx0 => ContFrame
+                   | 0wx1 => TextFrame
+                   | 0wx2 => BinFrame
+                   | 0wx8 => (checkCtrlFrame len fin; CloseFrame)
+                   | 0wx9 => (checkCtrlFrame len fin; PingFrame)
+                   | 0wxA => (checkCtrlFrame len fin; PongFrame)
+                   | _ => raise FrameParse ("Unknown opcode: 0x" ^ (Word8.fmt StringCvt.HEX opcode))
+        val mask = getOctets sock 4
+        val payload = unmask mask (getOctets sock (LargeWord.toInt len))
+    in
+        { fin = fin, rsv1 = rsv1, rsv2 = rsv2, rsv3 = rsv3, typ = ft, payload = payload}
+    end
+
+end
+
 structure Server = struct
 type Req = { cmd : string, path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
