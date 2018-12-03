@@ -1,7 +1,7 @@
 #!/bin/sh
 while true; do
     # mlton -output n2o.exe -default-ann 'allowVectorExps true' n2o.mlb
-    ml-build n2o.cm Server.main n2o.nj
+    ml-build n2o.cm Main.main n2o.nj
     sml @SMLload=n2o.nj &
     # ./n2o.exe &
     PID=$!

@@ -1,7 +1,9 @@
-structure Server = MkServer(
-    struct
-    open MLton.Signal;
-    fun setPipeHandler () = ignore (Posix.Signal.pipe, Handler.ignore)
-    end)
+structure Main = struct
+open MLton.Signal
+fun main (program_name, arglist) =
+    (setHandler (Posix.Signal.pipe, Handler.ignore);
+     RunCML.doit (fn () => Server.run(program_name, arglist), NONE);
+     OS.Process.success)
+end
 
-val _ = Server.main ("test", nil)
+val _ = Main.main ("test", nil)

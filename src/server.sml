@@ -1,4 +1,4 @@
-functor MkServer(M: SIGNAL) = struct
+structure Server = struct
 type Req = { cmd : string, path : string, headers : (string*string) list }
 type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
 exception BadRequest
@@ -102,19 +102,14 @@ fun acceptLoop server_sock =
         acceptLoop server_sock
     end
 
-fun cml_main (program_name, arglist) =
+fun run (program_name, arglist) =
     let val s = INetSock.TCP.socket()
     in
-    Socket.Ctl.setREUSEADDR (s, true);
-    Socket.bind(s, INetSock.any 8989);
-    Socket.listen(s, 5);
-    print "Entering accept loop...\n";
-    acceptLoop s
+        Socket.Ctl.setREUSEADDR (s, true);
+        Socket.bind(s, INetSock.any 8989);
+        Socket.listen(s, 5);
+        print "Entering accept loop...\n";
+        acceptLoop s
     end
 
-fun main (program_name, arglist) =
-    (M.setPipeHandler ();
-     RunCML.doit (fn () => cml_main(program_name, arglist), NONE);
-     OS.Process.success)
 end
-
