@@ -30,6 +30,9 @@ fun parseHeaders nil = nil
                                   k::v::_ => (k,v)
                                 | _ => raise BadRequest) :: (parseHeaders lns)
 
+fun writeHeaders nil = ""
+  | writeHeaders ((k,v)::hs) = k ^ ": " ^ v ^ "\r\n" ^ (writeHeaders hs)
+
 fun parseReq slc : Req =
     case tokens slc "\r\n" of
         nil => raise BadRequest
@@ -41,8 +44,8 @@ fun parseReq slc : Req =
 fun needUpgrade req = false (*TODO*)
 
 fun sendBytes sock bytes = ignore (Socket.sendVec (sock, Word8VectorSlice.full bytes))
-fun sendList sock lst = sendBytes sock (Word8Vector.concat lst)
 fun sendStr sock str = sendBytes sock (Byte.stringToBytes str)
+fun sendList sock lst = sendStr sock (String.concat lst)
 
 fun fileResp filePath =
     let val stream = BinIO.openIn filePath
@@ -60,13 +63,9 @@ fun respCode 200 = "OK"
   | respCode _ = "Internal Server Error"
 
 fun sendResp sock {status=status,headers=headers,body=body} =
-    sendList
-        sock
-        ([Byte.stringToBytes ("HTTP/1.1 "^Int.toString status^" "^respCode status^"\r\n")]
-         @ (List.map
-                (fn (k,v) => Byte.stringToBytes (k ^ ": " ^ v ^ "\r\n"))
-                headers)
-         @ [Byte.stringToBytes "\r\n", body])
+    (sendList sock ["HTTP/1.1 ", Int.toString status, " ", respCode status, "\r\n",
+                    writeHeaders headers, "\r\n"];
+     sendBytes sock body)
 
 fun sendError sock code body =
     (print body;
