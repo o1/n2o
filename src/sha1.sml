@@ -7,15 +7,16 @@ signature SHA1 =
 sig
   type 'a byte_reader = 'a * int -> Word8Vector.vector * 'a
   val sha1 : 'a byte_reader -> 'a -> Word8Vector.vector
+  val sha : Word8Vector.vector -> Word8Vector.vector
   val sha1String : 'a byte_reader -> 'a -> string
 end
 
 structure SHA1 : SHA1 =
 struct
   type 'a byte_reader = 'a * int -> Word8Vector.vector * 'a
-
   local
     fun toBitSize x = Word64.*(x, 0w8)
+
 
     fun explodeSize size (* in bits *) =
       let
@@ -164,16 +165,8 @@ struct
       let
         fun loop (i, a, b, c, d, e) =
           let
-            fun lrot5 w =
-              let val lsb5 = Word32.>>(w, 0w27)
-                  val msb27 = Word32.<<(w, 0w5)
-               in Word32.orb(msb27, lsb5)
-              end
-            fun lrot30 w =
-              let val lsb30 = Word32.>>(w, 0w2)
-                  val msb2 = Word32.<<(w, 0w30)
-              in Word32.orb(msb2, lsb30)
-              end
+            fun lrot5 w = Word32.orb(Word32.<<(w, 0w5),Word32.>>(w, 0w27))
+            fun lrot30 w = Word32.orb(Word32.<<(w, 0w30), Word32.>>(w, 0w2))
             fun calcF (i, b, c, d) =
               if 0 <= i andalso i <= 19 then Word32.orb(Word32.andb(b, c), Word32.andb(Word32.notb b, d))
               else if 20 <= i andalso i <= 39 then Word32.xorb(Word32.xorb(b, c), d)
@@ -231,6 +224,13 @@ struct
             initH0, initH1, initH2, initH3, initH4)
       end
   end
+
+  fun makeSHAreader vector =
+      let val size = Word8Vector.length vector
+          fun reader (i,n) = (vector,size)
+           in reader end
+
+  fun sha vector = sha1 (makeSHAreader vector) 0
 
   fun sha1String byteReader byteStreamState = let
     val hashVector = sha1 byteReader byteStreamState
