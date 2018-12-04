@@ -177,7 +177,8 @@ struct
             fun calcF (i, b, c, d) =
               if 0 <= i andalso i <= 19 then Word32.orb(Word32.andb(b, c), Word32.andb(Word32.notb b, d))
               else if 20 <= i andalso i <= 39 then Word32.xorb(Word32.xorb(b, c), d)
-              else if 40 <= i andalso i <= 59 then Word32.orb(Word32.orb(Word32.andb(b, c), Word32.andb(b, d)), Word32.andb(c, d))
+              else if 40 <= i andalso i <= 59 then Word32.orb(Word32.orb(Word32.andb(b, c), Word32.andb(b, d)),
+                                                              Word32.andb(c, d))
               else (* 60 <= i <= 79 *) Word32.xorb(Word32.xorb(b, c), d)
             fun calcK i =
               if 0 <= i andalso i <= 19 then       0wx5a827999
