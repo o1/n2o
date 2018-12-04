@@ -23,9 +23,11 @@ fun unmask key encoded =
 
 fun getFrame sock : Frame =
     let
+        val _ = print "step0\n"
         val b0 = getWord8 sock
         val (fin, rsv1) = (b0 & 0wx80 = 0wx80,b0 & 0wx40 = 0wx40)
         val (rsv2, rsv3) = (b0 & 0wx20 = 0wx20, b0 & 0w10 = 0wx10)
+        val _ = print "step1\n"
         val opcode = b0 & 0wxF
         val b1 = getWord8 sock
         val mask : bool = b1 & 0wx80 = 0wx80
@@ -48,6 +50,14 @@ fun getFrame sock : Frame =
         { fin = fin, rsv1 = rsv1, rsv2 = rsv2, rsv3 = rsv3, typ = ft, payload = payload}
     end
 
+fun serve sock =
+    let
+        val _ = print "serving ws..\n"
+        val frame = getFrame sock
+    in
+        print "got frame\n";
+        serve sock
+    end
 end
 
 structure Server = struct
@@ -97,19 +107,17 @@ fun parseReq slc : Req =
 fun lower str = String.map Char.toLower str
 fun header nam (req : Req) = List.find (fn (k,v) => lower k = lower nam) (#headers req)
 fun needUpgrade req =
-    (case header "Upgrade" req of
-         SOME (_,v) => (lower v) = "websocket"
-       | _ => false) andalso
-    (case header "Connection" req of
-         SOME (_,v) => (lower v) = "upgrade"
-       | _ => false)
+    case header "Upgrade" req of
+        SOME (_,v) => (lower v) = "websocket"
+      | _ => false
 fun getKey req =
     case header "Sec-WebSocket-Key" req of
         NONE => raise BadRequest "No Sec-WebSocket-Key header"
       | SOME (_,key) => let
           val magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+          val k = key^magic
       in
-          magic
+          Base64.encode (SHA1.sha (Byte.stringToBytes k))
       end
 fun checkHandshake req =
     (if #cmd req <> "GET" then raise BadRequest "Method must be GET" else ();
@@ -119,7 +127,10 @@ fun checkHandshake req =
        | _ => raise BadRequest "WebSocket version must be 13")
 fun upgrade sock req =
     (checkHandshake req;
-     raise BadRequest ""
+     { status = 101, headers = [("Upgrade", "websocket"),
+                                ("Connection", "Upgrade"),
+                                ("Sec-WebSocket-Accept", getKey req)],
+       body = Word8Vector.fromList nil }
     )
 
 fun sendBytes sock bytes = ignore (Socket.sendVec (sock, Word8VectorSlice.full bytes))
@@ -136,7 +147,8 @@ fun fileResp filePath =
          body = data }
     end
 
-fun respCode 200 = "OK"
+fun respCode 101 = "Switching Protocols"
+  | respCode 200 = "OK"
   | respCode 400 = "Bad Request"
   | respCode 404 = "Not Found"
   | respCode _ = "Internal Server Error"
@@ -145,7 +157,7 @@ fun sendResp sock {status=status,headers=headers,body=body} =
     (sendList sock ["HTTP/1.1 ", Int.toString status, " ", respCode status, "\r\n",
                     writeHeaders headers, "\r\n"];
      sendBytes sock body;
-     sendStr sock "\r\n")
+     sendStr sock "\r\n\r\n")
 
 fun sendError sock code body =
     (print body;
@@ -162,14 +174,15 @@ fun serve sock : Resp =
                                then String.extract (p, 3, NONE)
                                else p
     in
-        if needUpgrade req then upgrade sock req
+        if needUpgrade req then (print "need upgrade\n"; upgrade sock req)
         else (fileResp ("static/html" ^ reqPath ^ ".html"))
              handle Io => (fileResp (String.extract (path, 1, NONE))) handle Io => raise NotFound path
     end
 
 fun connMain sock =
     (case serve sock of
-         resp => sendResp sock resp; Socket.close sock)
+         resp => (sendResp sock resp; if (#status resp)<>101 then ignore (Socket.close sock)
+                                      else WebSocket.serve sock))
     handle BadRequest err => sendError sock 400 ("Bad Request: " ^ err ^ "\n")
          | NotFound path  => sendError sock 404 ("Not Found: " ^ path ^ "\n")
 
