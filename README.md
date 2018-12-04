@@ -21,7 +21,7 @@ Note: Unnecessary use of -X or --request, GET is already inferred.
 > Host: localhost:8989
 > User-Agent: curl/7.58.0
 > Accept: */*
-> 
+>
 < HTTP/1.1 404 Not Found
 * Connection #0 to host localhost left intact
 
@@ -32,4 +32,3 @@ Credits
 
 * Marat Khafizov
 * Maxim Sokhatsky
-
