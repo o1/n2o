@@ -5,16 +5,7 @@
 
 signature SHA1 =
 sig
-  (* A reader assumes a stream or function view of IO. A reader function
-   * takes in stream state and an positive integer n specifying the number
-   * of bytes to read. It returns a vector of n bytes and a new stream
-   * state. The reader should only return less than n bytes if the stream
-   * has ended and n bytes are not available. An input of 0 bytes should
-   * always return an empty vector and cannot be used to check for the end
-   * of the stream.
-   *)
   type 'a byte_reader = 'a * int -> Word8Vector.vector * 'a
-
   val sha1 : 'a byte_reader -> 'a -> Word8Vector.vector
   val sha1String : 'a byte_reader -> 'a -> string
 end
@@ -83,7 +74,6 @@ struct
     fun createPadChunk messageByteSize =
       let
         val (s0, s1, s2, s3, s4, s5, s6, s7) =
-          (* Size in bits is stored in the chunk *)
           explodeSize (toBitSize messageByteSize)
         fun buildChunk i =
           if i < 56 then 0w0
@@ -170,47 +160,31 @@ struct
         ; Word8Array.vector result)
       end
 
-    (* Given the current hash state values and the current
-       chunk (preprocessed into a working array by fillWorkingArray),
-       this function updates the hash state values according to the
-       sha1 algorithm *)
     fun processChunkData (wArray, h0, h1, h2, h3, h4) =
       let
         fun loop (i, a, b, c, d, e) =
           let
             fun lrot5 w =
-              let
-                val lsb5 = Word32.>>(w, 0w27)
-                val msb27 = Word32.<<(w, 0w5)
-              in
-                Word32.orb(msb27, lsb5)
+              let val lsb5 = Word32.>>(w, 0w27)
+                  val msb27 = Word32.<<(w, 0w5)
+               in Word32.orb(msb27, lsb5)
               end
             fun lrot30 w =
-              let
-                val lsb30 = Word32.>>(w, 0w2)
-                val msb2 = Word32.<<(w, 0w30)
-              in
-                Word32.orb(msb2, lsb30)
+              let val lsb30 = Word32.>>(w, 0w2)
+                  val msb2 = Word32.<<(w, 0w30)
+              in Word32.orb(msb2, lsb30)
               end
             fun calcF (i, b, c, d) =
-              if 0 <= i andalso i <= 19 then
-                Word32.orb(Word32.andb(b, c),
-                           Word32.andb(Word32.notb b, d))
-              else if 20 <= i andalso i <= 39 then
-                Word32.xorb(Word32.xorb(b, c), d)
-              else if 40 <= i andalso i <= 59 then
-                Word32.orb(Word32.orb(Word32.andb(b, c),
-                                      Word32.andb(b, d)),
-                           Word32.andb(c, d))
-              else (* 60 <= i <= 79 *)
-                Word32.xorb(Word32.xorb(b, c), d)
+              if 0 <= i andalso i <= 19 then Word32.orb(Word32.andb(b, c), Word32.andb(Word32.notb b, d))
+              else if 20 <= i andalso i <= 39 then Word32.xorb(Word32.xorb(b, c), d)
+              else if 40 <= i andalso i <= 59 then Word32.orb(Word32.orb(Word32.andb(b, c), Word32.andb(b, d)), Word32.andb(c, d))
+              else (* 60 <= i <= 79 *) Word32.xorb(Word32.xorb(b, c), d)
             fun calcK i =
               if 0 <= i andalso i <= 19 then       0wx5a827999
               else if 20 <= i andalso i <= 39 then 0wx6ed9eba1
               else if 40 <= i andalso i <= 59 then 0wx8f1bbcdc
               else (* 60 <= i <= 79 *)             0wxca62c1d6
-            fun calcA (a, f, e, k, w) =
-              Word32.+(Word32.+(Word32.+(Word32.+(lrot5 a, f), e), k), w)
+            fun calcA (a, f, e, k, w) = Word32.+(Word32.+(Word32.+(Word32.+(lrot5 a, f), e), k), w)
           in
             if 0 <= i andalso i <= 79 then
               let
@@ -235,37 +209,25 @@ struct
 
     fun sha1 byteReader byteStreamState =
       let
-        (* The initial values of the hash result state. These are defined
-           by the sha1 algorithm. *)
+
         val initH0 : Word32.word = 0wx67452301
         val initH1 : Word32.word = 0wxefcdab89
         val initH2 : Word32.word = 0wx98badcfe
         val initH3 : Word32.word = 0wx10325476
         val initH4 : Word32.word = 0wxc3d2e1f0
 
-        (* An array that will be used for temporary space repeatedly
-           to process each chunk *)
         val workingArray = Word32Array.array (80, 0wx0)
 
         fun loopOverChunks (chunkStreamState, h0, h1, h2, h3, h4) =
           case readChunk chunkStreamState of
             NONE => packHashResultIntoByteVector (h0, h1, h2, h3, h4)
           | SOME (chunk, nextChunkStreamState) =>
-            let
-              val _ =
-                initializeWorkingArrayWithDataFromChunk (chunk, workingArray)
-
-              (* Process the data in the working array (filled
-                 with the current chunk's data) using the sha1
-                 hash algorithm *)
-              val (h0', h1', h2', h3', h4') =
-                processChunkData (workingArray, h0, h1, h2, h3, h4)
-            in
-              loopOverChunks (nextChunkStreamState, h0', h1', h2', h3', h4')
+            let val _ = initializeWorkingArrayWithDataFromChunk (chunk, workingArray)
+                val (h0', h1', h2', h3', h4') = processChunkData (workingArray, h0, h1, h2, h3, h4)
+             in loopOverChunks (nextChunkStreamState, h0', h1', h2', h3', h4')
             end
-      in
-        loopOverChunks (makeInitChunkStreamState (byteReader, byteStreamState),
-                        initH0, initH1, initH2, initH3, initH4)
+         in loopOverChunks (makeInitChunkStreamState (byteReader, byteStreamState),
+            initH0, initH1, initH2, initH3, initH4)
       end
   end
 
