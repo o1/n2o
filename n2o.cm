@@ -2,7 +2,7 @@ Group is
         $cml/basis.cm
         $cml/cml.cm
         $cml-lib/smlnj-lib.cm
+        src/sha1.sml
         src/n2o.sml
         src/server.sml
         src/main-smlnj.sml
-

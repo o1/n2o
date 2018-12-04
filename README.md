@@ -32,4 +32,4 @@ Credits
 
 * Marat Khafizov
 * Maxim Sokhatsky
-
+* Sophia Donataccio
