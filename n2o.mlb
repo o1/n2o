@@ -2,6 +2,7 @@ $(SML_LIB)/basis/basis.mlb
 $(SML_LIB)/basis/mlton.mlb
 $(SML_LIB)/cml/cml.mlb
 src/sha1.sml
+src/utf8.sml
 src/n2o.sml
 src/server.sml
 src/main-mlton.sml
