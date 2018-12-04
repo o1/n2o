@@ -78,14 +78,10 @@ struct
           explodeSize (toBitSize messageByteSize)
         fun buildChunk i =
           if i < 56 then 0w0
-          else if i = 56 then s0
-          else if i = 57 then s1
-          else if i = 58 then s2
-          else if i = 59 then s3
-          else if i = 60 then s4
-          else if i = 61 then s5
-          else if i = 62 then s6
-          else if i = 63 then s7
+          else if i = 56 then s0 else if i = 57 then s1
+          else if i = 58 then s2 else if i = 59 then s3
+          else if i = 60 then s4 else if i = 61 then s5
+          else if i = 62 then s6 else if i = 63 then s7
           else raise (Fail "createPadChunk: invalid chunk size")
       in
         Word8Vector.tabulate (64, buildChunk)
@@ -98,29 +94,22 @@ struct
 
   in (* local *)
 
-    fun makeInitChunkStreamState (byteReader, byteStreamState) =
+    fun make (byteReader, byteStreamState) =
       Reading (byteReader, byteStreamState, 0w0)
 
     fun readChunk Empty = NONE
       | readChunk (PadChunk chunk) = SOME (chunk, Empty)
       | readChunk (Reading(byteReader, byteStreamState, totalBytesRead)) =
-        let
-          val (chunk, nextByteStreamState) = byteReader (byteStreamState, 64)
-          val chunkSize = Word8Vector.length chunk
-          val nextTotalBytesRead =
-              Word64.+(Word64.fromInt chunkSize, totalBytesRead)
-        in
-          if chunkSize = 64 then SOME (chunk, Reading(byteReader,
-              nextByteStreamState, nextTotalBytesRead))
-          else if chunkSize < 56 then SOME(createLastChunk (chunk,
-              nextTotalBytesRead), Empty)
-          else (* 56 < chunkSize <= 64 *)
-            SOME(addPadding chunk, PadChunk (createPadChunk nextTotalBytesRead))
-        end
-  end
+        let val (chunk, nextByteStreamState) = byteReader (byteStreamState, 64)
+            val chunkSize = Word8Vector.length chunk
+            val nextTotalBytesRead = Word64.+(Word64.fromInt chunkSize, totalBytesRead)
+         in if chunkSize = 64 then SOME (chunk, Reading(byteReader, nextByteStreamState, nextTotalBytesRead))
+            else if chunkSize < 56 then SOME(createLastChunk (chunk, nextTotalBytesRead), Empty)
+            else SOME(addPadding chunk, PadChunk (createPadChunk nextTotalBytesRead)) end
+    end
 
   local
-    fun initializeWorkingArrayWithDataFromChunk (chunk, wArray) =
+    fun init (chunk, wArray) =
       let
         fun sub (c, i) =
           Word32.fromLarge(PackWord32Big.subVec (c, i))
@@ -144,16 +133,11 @@ struct
             (Word32Array.update (wArray, i, calcW i)
             ; loop2 (i + 1))
           else ()
-      in
-        ( loop1 0
-        ; loop2 16)
-      end
+      in ( loop1 0 ; loop2 16) end
 
-    fun packHashResultIntoByteVector (h0, h1, h2, h3, h4) =
-      let
-        val result = Word8Array.array (20, 0wx0)
-      in
-        (PackWord32Big.update(result, 0, Word32.toLarge h0)
+    fun pack (h0, h1, h2, h3, h4) =
+      let val result = Word8Array.array (20, 0wx0)
+      in (PackWord32Big.update(result, 0, Word32.toLarge h0)
         ; PackWord32Big.update(result, 1, Word32.toLarge h1)
         ; PackWord32Big.update(result, 2, Word32.toLarge h2)
         ; PackWord32Big.update(result, 3, Word32.toLarge h3)
@@ -161,13 +145,11 @@ struct
         ; Word8Array.vector result)
       end
 
-    fun processChunkData (wArray, h0, h1, h2, h3, h4) =
-      let
-        fun loop (i, a, b, c, d, e) =
-          let
-            fun lrot5 w = Word32.orb(Word32.<<(w, 0w5),Word32.>>(w, 0w27))
-            fun lrot30 w = Word32.orb(Word32.<<(w, 0w30), Word32.>>(w, 0w2))
-            fun calcF (i, b, c, d) =
+    fun processData (wArray, h0, h1, h2, h3, h4) =
+      let fun loop (i, a, b, c, d, e) =
+          let fun lrot5 w = Word32.orb(Word32.<<(w, 0w5),Word32.>>(w, 0w27))
+              fun lrot30 w = Word32.orb(Word32.<<(w, 0w30), Word32.>>(w, 0w2))
+              fun calcF (i, b, c, d) =
               if 0 <= i andalso i <= 19 then Word32.orb(Word32.andb(b, c), Word32.andb(Word32.notb b, d))
               else if 20 <= i andalso i <= 39 then Word32.xorb(Word32.xorb(b, c), d)
               else if 40 <= i andalso i <= 59 then Word32.orb(Word32.orb(Word32.andb(b, c), Word32.andb(b, d)),
@@ -179,51 +161,32 @@ struct
               else if 40 <= i andalso i <= 59 then 0wx8f1bbcdc
               else (* 60 <= i <= 79 *)             0wxca62c1d6
             fun calcA (a, f, e, k, w) = Word32.+(Word32.+(Word32.+(Word32.+(lrot5 a, f), e), k), w)
-          in
-            if 0 <= i andalso i <= 79 then
-              let
-                val f = calcF (i, b, c, d)
-                val k = calcK i
-                val a' = calcA (a, f, e, k, Word32Array.sub(wArray, i))
-                val b' = a
-                val c' = lrot30 b
-                val d' = c
-                val e' = d
-              in
-                loop (i + 1, a', b', c', d', e')
-              end
-            else
-              (h0 + a, h1 + b, h2 + c, h3 + d, h4 + e)
-          end
-      in
-        loop (0, h0, h1, h2, h3, h4)
-      end
+          in if 0 <= i andalso i <= 79 then
+              let val f = calcF (i, b, c, d)
+                  val k = calcK i
+                  val a' = calcA (a, f, e, k, Word32Array.sub(wArray, i))
+                  val b' = a
+                  val c' = lrot30 b
+                  val d' = c
+                  val e' = d
+              in loop (i + 1, a', b', c', d', e') end
+            else (h0 + a, h1 + b, h2 + c, h3 + d, h4 + e) end
+      in loop (0, h0, h1, h2, h3, h4) end
 
   in (* local *)
 
     fun sha1 byteReader byteStreamState =
-      let
-
-        val initH0 : Word32.word = 0wx67452301
-        val initH1 : Word32.word = 0wxefcdab89
-        val initH2 : Word32.word = 0wx98badcfe
-        val initH3 : Word32.word = 0wx10325476
-        val initH4 : Word32.word = 0wxc3d2e1f0
-
-        val workingArray = Word32Array.array (80, 0wx0)
-
-        fun loopOverChunks (chunkStreamState, h0, h1, h2, h3, h4) =
-          case readChunk chunkStreamState of
-            NONE => packHashResultIntoByteVector (h0, h1, h2, h3, h4)
-          | SOME (chunk, nextChunkStreamState) =>
-            let val _ = initializeWorkingArrayWithDataFromChunk (chunk, workingArray)
-                val (h0', h1', h2', h3', h4') = processChunkData (workingArray, h0, h1, h2, h3, h4)
-             in loopOverChunks (nextChunkStreamState, h0', h1', h2', h3', h4')
-            end
-         in loopOverChunks (makeInitChunkStreamState (byteReader, byteStreamState),
-            initH0, initH1, initH2, initH3, initH4)
+      let val workingArray = Word32Array.array (80, 0wx0)
+          fun loopOverChunks (state, h0, h1, h2, h3, h4) =
+         case readChunk state of
+            NONE => pack (h0, h1, h2, h3, h4)
+          | SOME (chunk, next) =>
+            let val _ = init (chunk, workingArray)
+                val (h0', h1', h2', h3', h4') = processData (workingArray, h0, h1, h2, h3, h4)
+             in loopOverChunks (next, h0', h1', h2', h3', h4') end
+         in loopOverChunks (make (byteReader, byteStreamState),
+            0wx67452301, 0wxefcdab89, 0wx98badcfe, 0wx10325476, 0wxc3d2e1f0) end
       end
-  end
 
   fun makeSHAreader vector =
       let val size = Word8Vector.length vector
