@@ -1,7 +1,7 @@
-(* UTF-8 Encoder/Decode *)
+(* UTF-8 Encoder/Decoder *)
 
-(* Copyright 2015-2017 Chris Cannam.
-   MIT/X11 licence. See the file COPYING for details. *)
+(* bitbucket.org/cannam/sml-utf8
+   Copyright (c) 2015-2017 Chris Cannam (MIT license) *)
 
 structure Utf8Decoder :> sig
 

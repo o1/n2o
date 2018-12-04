@@ -1,7 +1,7 @@
-(* Copyright (c) 2014 Sophia Donataccio, The MIT License (MIT) *)
+(* SHA-1 *)
 
-(* A good explanation of the sha1 algorithm is available at
-   https://en.wikipedia.org/wiki/SHA-1 *)
+(* github.com/srdqty/sml-sha1
+   Copyright (c) 2014 Sophia Donataccio (MIT license) *)
 
 signature SHA1 =
 sig
