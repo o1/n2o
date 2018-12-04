@@ -4,5 +4,6 @@ Group is
         $cml-lib/smlnj-lib.cm
         src/n2o.sml
         src/server.sml
+        src/utf8.sml
         src/sha1-smlnj.sml
         src/main-smlnj.sml
