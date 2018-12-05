@@ -3,6 +3,7 @@ Group is
         $cml/cml.cm
         $cml-lib/smlnj-lib.cm
         src/n2o.sml
+        src/websocket.sml
         src/server.sml
         src/utf8.sml
         src/compat.sml

@@ -1,5 +1,6 @@
 structure Compat = struct
 
+structure A = Word8Array
 structure V = Word8Vector
 structure W8 = Word8
 structure W64 = Word64
@@ -16,8 +17,20 @@ fun w64_to_w8 w =
 
 local
     val orb = W64.orb
-    infix orb
+    val (op-) = Int.-
+    val (op+) = Int.+
+    infix orb + -
 in
+fun pack_w64be (arr,i,w) =
+    (A.update (arr, i,   w64_to_w8(Word64.>>(w,0w56)));
+     A.update (arr, i+1, w64_to_w8(Word64.>>(w,0w48)));
+     A.update (arr, i+2, w64_to_w8(Word64.>>(w,0w40)));
+     A.update (arr, i+3, w64_to_w8(Word64.>>(w,0w32)));
+     A.update (arr, i+4, w64_to_w8(Word64.>>(w,0w24)));
+     A.update (arr, i+5, w64_to_w8(Word64.>>(w,0w16)));
+     A.update (arr, i+6, w64_to_w8(Word64.>>(w,0w8)));
+     A.update (arr, i+7, w64_to_w8(w)))
+
 fun extract_w16be vec =
     let
         val p0 = W64.<<(w8_to_w64(V.sub(vec,0)),0w8)
