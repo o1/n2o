@@ -25,14 +25,6 @@ fun pad bs =
         A.copyVec {src = bs, dst = arr, di = 0};
         A.update (arr, len,             0wx80);
         Compat.pack_w64be (arr, Int.-(totlen,8), bitlen);
-        (* A.update (arr, Int.-(totlen,8), Compat.w64_to_w8(Word64.>>(bitlen,0w56))); *)
-        (* A.update (arr, Int.-(totlen,7), Compat.w64_to_w8(Word64.>>(bitlen,0w48))); *)
-        (* A.update (arr, Int.-(totlen,6), Compat.w64_to_w8(Word64.>>(bitlen,0w40))); *)
-        (* A.update (arr, Int.-(totlen,5), Compat.w64_to_w8(Word64.>>(bitlen,0w32))); *)
-        (* A.update (arr, Int.-(totlen,4), Compat.w64_to_w8(Word64.>>(bitlen,0w24))); *)
-        (* A.update (arr, Int.-(totlen,3), Compat.w64_to_w8(Word64.>>(bitlen,0w16))); *)
-        (* A.update (arr, Int.-(totlen,2), Compat.w64_to_w8(Word64.>>(bitlen,0w8))); *)
-        (* A.update (arr, Int.-(totlen,1), Compat.w64_to_w8(bitlen)); *)
         A.vector arr
     end
 
