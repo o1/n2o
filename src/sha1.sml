@@ -26,24 +26,23 @@ fun pad bs =
        Compat.pack_w64be (arr, Int.-(totlen,8), bitlen);
        A.vector arr end
 
-local
-    open Word32
-    infix orb xorb andb << >>
- in fun lrot(x,n)  = (x << n) orb (x >> Word.-(0w32,n))
-    fun ch  (b,c,d) = (b andb c) orb ((notb b) andb d)
-    fun par (b,c,d) = b xorb c xorb d
-    fun maj (b,c,d) = (b andb c) orb (b andb d) orb (c andb d)
+local open Word32
+      infix orb xorb andb << >>
+   in fun lrot(x,n)  = (x << n) orb (x >> Word.-(0w32,n))
+      fun ch  (b,c,d) = (b andb c) orb ((notb b) andb d)
+      fun par (b,c,d) = b xorb c xorb d
+      fun maj (b,c,d) = (b andb c) orb (b andb d) orb (c andb d)
 end
 
 fun f (t,b,c,d) =
-    if      (00 <= t) andalso (t <= 19) then ch(b,c,d)
+         if (00 <= t) andalso (t <= 19) then ch(b,c,d)
     else if (20 <= t) andalso (t <= 39) then par(b,c,d)
     else if (40 <= t) andalso (t <= 59) then maj(b,c,d)
     else if (60 <= t) andalso (t <= 79) then par(b,c,d)
     else raise Fail "'t' is out of range"
 
 fun k (t) : w32 =
-    if      (00 <= t) andalso (t <= 19) then 0wx5a827999
+         if (00 <= t) andalso (t <= 19) then 0wx5a827999
     else if (20 <= t) andalso (t <= 39) then 0wx6ed9eba1
     else if (40 <= t) andalso (t <= 59) then 0wx8f1bbcdc
     else if (60 <= t) andalso (t <= 79) then 0wxca62c1d6
@@ -52,25 +51,24 @@ fun k (t) : w32 =
 fun m bs i t : w32 =
     let val block = VS.slice (bs, 64*i + 4*t, SOME 4)
         val subv = VS.vector block
-    in Word32.fromLarge (PackWord32Big.subVec (subv, 0)) end
+     in Word32.fromLarge (PackWord32Big.subVec (subv, 0)) end
 
 fun inc x = x + 1
 
 fun w bs i t =
     let val w' = w bs i
-    in if (0 <= t) andalso (t <= 15)
-       then m bs i t
-       else if (16 <= t) andalso (t <= 79)
-       then lrot(w'(t-3) xorb w'(t-8) xorb w'(t-14) xorb w'(t-16), 0w1)
-       else raise Fail "t is out of range"
+     in if (0 <= t) andalso (t <= 15)
+        then m bs i t
+        else if (16 <= t) andalso (t <= 79)
+        then lrot(w'(t-3) xorb w'(t-8) xorb w'(t-14) xorb w'(t-16), 0w1)
+        else raise Fail "t is out of range"
     end
 
 fun loop_t wt t (h as (a,b,c,d,e)) =
     if (t = 80) then h
-    else let
-        open Word32
-        val tmp = lrot(a,0w5) + f(t,b,c,d) + e + k(t) + wt(t)
-    in loop_t wt (inc t) (tmp,a,lrot(b,0w30),c,d) end
+    else let open Word32
+         val tmp = lrot(a,0w5) + f(t,b,c,d) + e + k(t) + wt(t)
+      in loop_t wt (inc t) (tmp,a,lrot(b,0w30),c,d) end
 
 fun encode bs =
     let val padded = pad bs
@@ -90,7 +88,8 @@ end
 structure SHA1Test = struct
 structure V = Word8Vector
 fun hexstr (vec:V.vector):string =
-    V.foldr (fn (e,a) => (if (Word8.<= (e, 0wxf)) then "0" else "") ^ (Word8.toString e) ^ a) "" vec
+    V.foldr (fn (e,a) => (if (Word8.<= (e, 0wxf))
+             then "0" else "") ^ (Word8.toString e) ^ a) "" vec
 fun hex v = String.map Char.toLower (hexstr v)
 fun test (x, expected) = let
     open LargeWord

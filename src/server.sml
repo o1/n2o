@@ -53,32 +53,29 @@ fun lower str = String.map Char.toLower str
 fun header nam (req : Req) = List.find (fn (k,v) => lower k = lower nam) (#headers req)
 fun needUpgrade req =
     case header "Upgrade" req of
-        SOME (_,v) => (lower v) = "websocket"
-      | _ => false
+         SOME (_,v) => (lower v) = "websocket"
+       | _ => false
 
 fun getKey req =
     case header "Sec-WebSocket-Key" req of
-        NONE => raise BadRequest "No Sec-WebSocket-Key header"
-      | SOME (_,key) => let
-          val magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-          val k = key^magic
-       in Base64.encode (SHA1.encode (Byte.stringToBytes k))
-    end
+         NONE => raise BadRequest "No Sec-WebSocket-Key header"
+       | SOME (_,key) => let val magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+                             val k = key^magic
+                          in Base64.encode (SHA1.encode (Byte.stringToBytes k)) end
 
 fun checkHandshake req =
     (if #cmd req <> "GET" then raise BadRequest "Method must be GET" else ();
      if #vers req <> "HTTP/1.1" then raise BadRequest "HTTP version must be 1.1" else ();
      case header "Sec-WebSocket-Version" req of
-         SOME (_,"13") => ()
-       | _ => raise BadRequest "WebSocket version must be 13")
+          SOME (_,"13") => ()
+        | _ => raise BadRequest "WebSocket version must be 13")
 
 fun upgrade sock req =
     (checkHandshake req;
      { body = Word8Vector.fromList nil,
        status = 101, headers = [("Upgrade", "websocket"),
                                 ("Connection", "Upgrade"),
-                                ("Sec-WebSocket-Accept", getKey req)] }
-    )
+                                ("Sec-WebSocket-Accept", getKey req)] })
 
 fun sendBytes sock bytes = ignore (Socket.sendVec (sock, Word8VectorSlice.full bytes))
 fun sendStr sock str = sendBytes sock (Byte.stringToBytes str)
@@ -100,8 +97,7 @@ fun respCode 101 = "Switching Protocols"
   | respCode _ = "Internal Server Error"
 
 fun sendResp sock {status=status,headers=headers,body=body} =
-    (sendList sock ["HTTP/1.1 ", Int.toString status, " ", respCode status, "\r\n",
-                    writeHeaders headers, "\r\n"];
+    (sendList sock ["HTTP/1.1 ", Int.toString status, " ", respCode status, "\r\n", writeHeaders headers, "\r\n"];
      sendBytes sock body;
      sendStr sock "\r\n\r\n")
 
@@ -110,23 +106,30 @@ fun sendError sock code body =
      sendResp sock {status=code,headers=[],body=Byte.stringToBytes body};
      Socket.close sock)
 
+fun router path =
+    case path of
+         "/" => "/index"
+         | p => if String.isPrefix "/ws" p
+                then String.extract (p, 3, NONE)
+                else p
+
 fun serve sock : Resp =
     let val req = parseReq (Word8VectorSlice.full (Socket.recvVec (sock, 2048)))
         val path = #path req
-        val reqPath = case path of
-                          "/" => "/index"
-                        | p => if String.isPrefix "/ws" p
-                               then String.extract (p, 3, NONE)
-                               else p
+        val reqPath = router path
      in if needUpgrade req then (print "need upgrade\n"; upgrade sock req)
         else (fileResp ("static/html" ^ reqPath ^ ".html"))
-             handle Io => (fileResp (String.extract (path, 1, NONE))) handle Io => raise NotFound path
+             handle Io => (fileResp (String.extract (path, 1, NONE)))
+             handle Io => raise NotFound path
     end
 
+fun switch sock =
+    case serve sock of
+         resp => (sendResp sock resp;
+                  if (#status resp)<>101 then ignore (Socket.close sock)
+                                         else WebSocket.serve sock)
 fun connMain sock =
-    (case serve sock of
-         resp => (sendResp sock resp; if (#status resp)<>101 then ignore (Socket.close sock)
-                                      else WebSocket.serve sock))
+    switch sock
     handle BadRequest err => sendError sock 400 ("Bad Request: " ^ err ^ "\n")
          | NotFound path  => sendError sock 404 ("Not Found: " ^ path ^ "\n")
 
