@@ -66,46 +66,34 @@ fun m bs i t : w32 =
 fun inc x = x + 1
 
 fun w bs i t =
-    let
-        val w' = w bs i
-    in
-        if (0 <= t) andalso (t <= 15)
-        then m bs i t
-        else if (16 <= t) andalso (t <= 79)
-        then (w'(t-3) xorb w'(t-8) xorb w'(t-14) xorb w'(t-16)) <~ 0w1
-        else raise Fail "t is out of range"
+    let val w' = w bs i
+    in if (0 <= t) andalso (t <= 15)
+       then m bs i t
+       else if (16 <= t) andalso (t <= 79)
+       then (w'(t-3) xorb w'(t-8) xorb w'(t-14) xorb w'(t-16)) <~ 0w1
+       else raise Fail "t is out of range"
     end
 
 fun loop_t wt t (h as (a,b,c,d,e)) =
     if (t = 80) then h
-    else
-        let
-            open Word32
-            val tmp = (a <~ 0w5) + f(t,b,c,d) + e + k(t) + wt(t)
-        in
-            loop_t wt (inc t) (tmp,a,b <~ 0w30,c,d)
-        end
+    else let
+        open Word32
+        val tmp = (a <~ 0w5) + f(t,b,c,d) + e + k(t) + wt(t)
+    in loop_t wt (inc t) (tmp,a,b <~ 0w30,c,d) end
 
 fun encode bs =
-    let
-        val padded = pad bs
+    let val padded = pad bs
         val blocks = (V.length padded) div 64
         fun loop_i i (res as (h0,h1,h2,h3,h4)) =
             if i = blocks then res
-            else
-                let
-                    val wt = w padded i
-                    val (a,b,c,d,e) = loop_t wt 0 (h0,h1,h2,h3,h4)
-                in
-                    loop_i (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e)
-                end
+            else let val wt = w padded i
+                     val (a,b,c,d,e) = loop_t wt 0 (h0,h1,h2,h3,h4)
+                 in loop_i (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e) end
         val (h0,h1,h2,h3,h4) = loop_i 0 hinit
         val arr = A.array (20,0w0)
         fun pack i x = PackWord32Big.update (arr,i,Word32.toLarge x)
-    in
-        pack 0 h0; pack 1 h1; pack 2 h2; pack 3 h3; pack 4 h4;
-        A.vector arr
-    end
+    in pack 0 h0; pack 1 h1; pack 2 h2; pack 3 h3; pack 4 h4;
+       A.vector arr end
 end
 
 structure Sha1Test = struct
@@ -118,14 +106,9 @@ fun test (x, expected) = let
     open Sha1
     infix <~
     val raw = Byte.stringToBytes x
-    (* val padded = pad raw *)
     val actual = hex (encode raw)
-in
-    (* print "\n\npadded: "; *)
-    (* print ((hex padded) ^ "\n"); *)
-    if expected = actual then ()
-    else raise Fail ("\nExpected: " ^ expected  ^ "\n  actual: " ^ actual ^ "\n");
-    ()
+in if expected = actual then ()
+   else raise Fail ("\nExpected: " ^ expected  ^ "\n  actual: " ^ actual ^ "\n")
 end
 end
 
