@@ -47,7 +47,6 @@ fun par (b,c,d) = b xorb c xorb d
 fun maj (b,c,d) = (b andb c) orb (b andb d) orb (c andb d)
 end
 
-
 fun f (t,b,c,d) =
     if      (00 <= t) andalso (t <= 19) then ch(b,c,d)
     else if (20 <= t) andalso (t <= 39) then par(b,c,d)
@@ -69,15 +68,9 @@ fun m bs i t : Word32.word =
         Word32.fromLarge (PackWord32Big.subVec (subv, 0))
     end
 
-(* fun w bs i t = if (0 <= t) andalso (t <= 15) *)
-(*                then m bs i t *)
-(*                else if (16 <= t) andalso (t <= 79) *)
-(*                then rotl ((w bs i (t-3)) xorb (w bs i (t-8)) xorb (w bs i (t-14)) xorb (w bs i (t-16)), 0w1) *)
-(*                else raise Fail "t is out of range" *)
-
 fun inc x = x + 1
-fun loop_i bs i (h as (h0,h1,h2,h3,h4)) =
-    if i = (((V.length bs) div 64) - 1) then h
+fun loop_i bs i (res as (h0,h1,h2,h3,h4)) =
+    if i = (((V.length bs) div 64) - 1) then res
     else
         let
             fun wt t =
