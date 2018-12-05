@@ -23,7 +23,7 @@ fun pad bs =
         val arr = A.array (totlen, 0w0)
     in
         A.copyVec {src = bs, dst = arr, di = 0};
-        A.update (arr, len,             0wx80);
+        A.update (arr, len, 0wx80);
         Compat.pack_w64be (arr, Int.-(totlen,8), bitlen);
         A.vector arr
     end
