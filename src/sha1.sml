@@ -1,6 +1,7 @@
 structure Sha1 = struct
 
-type word32 = Word32.word
+type w32 = Word32.word
+type hw32 = w32*w32*w32*w32*w32
 
 structure V = Word8Vector
 structure VS = Word8VectorSlice
@@ -8,18 +9,13 @@ structure A = Word8Array
 structure W64 = Word64
 
 val xorb = Word32.xorb
-
 infixr 5 xorb
-infixr 3 /> fun f /> y = fn x => f (x, y)
 
-val tobitlen = (W64.* /> 0w8) o W64.fromInt
-fun const x = fn _ => x
-
-fun pad (bs : V.vector) : V.vector =
+fun pad bs =
     let
         open W64
         val len    = V.length bs
-        val bitlen = tobitlen len
+        val bitlen = W64.*(W64.fromInt len,0w8)
         val lstbl = bitlen mod 0w512
         val addlen = if lstbl < 0w448 then ((0w448 - lstbl) div 0w8) + 0w8
                      else ((0w512 - lstbl) div 0w8) + 0w64
@@ -39,7 +35,7 @@ fun pad (bs : V.vector) : V.vector =
         A.vector arr
     end
 
-val hinit = (0wx67452301:word32,0wxefcdab89:word32,0wx98badcfe:word32,0wx10325476:word32,0wxc3d2e1f0:word32)
+val hinit : hw32 = (0wx67452301,0wxefcdab89,0wx98badcfe,0wx10325476,0wxc3d2e1f0)
 
 infix <~
 local
@@ -59,7 +55,7 @@ fun f (t,b,c,d) =
     else if (40 <= t) andalso (t <= 59) then maj(b,c,d)
     else if (60 <= t) andalso (t <= 79) then par(b,c,d)
     else raise Fail "'t' is out of range"
-fun k (t) : word32 =
+fun k (t) : w32 =
     if      (00 <= t) andalso (t <= 19) then 0wx5a827999
     else if (20 <= t) andalso (t <= 39) then 0wx6ed9eba1
     else if (40 <= t) andalso (t <= 59) then 0wx8f1bbcdc
@@ -75,10 +71,6 @@ fun m bs i t : Word32.word =
     end
 
 fun inc x = x + 1
-
-fun hexstr (vec:V.vector):string =
-    V.foldr (fn (e,a) => (if (Word8.<= (e, 0wxf)) then "0" else "") ^ (Word8.toString e) ^ a) "" vec
-fun hex v = String.map Char.toLower (hexstr v)
 
 fun w bs (i,t) =
     let
@@ -123,6 +115,10 @@ fun encode bs =
 end
 
 structure Sha1Test = struct
+structure V = Word8Vector
+fun hexstr (vec:V.vector):string =
+    V.foldr (fn (e,a) => (if (Word8.<= (e, 0wxf)) then "0" else "") ^ (Word8.toString e) ^ a) "" vec
+fun hex v = String.map Char.toLower (hexstr v)
 fun test (x, expected) = let
     open LargeWord
     open Sha1
