@@ -125,13 +125,12 @@ val _ = let
     fun hex v = String.map Char.toLower (hexstr v)
     (* val prep = Sha1.preproc (Byte.stringToBytes "abcdefghijklmnopqrstuvwxyz") *)
     val prep = preproc (Byte.stringToBytes "abcde")
-    val _ = print (hex prep ^ "\n")
     val enc = encode prep
 in
-    print "\n                 00000000000000000000000000000000\n";
-    print "\nbefore rotation: 000000000";
+    print "\nrotation:";
+    print "\n32-bit layout:   00000000000000000000000000000000\n";
+    print "\n0                000000000";
     print (Word32.fmt StringCvt.BIN 0wx616263);
-    print "\nafter rotation:\n";
     print "\n1                00000000";
     print (Word32.fmt StringCvt.BIN (0wx616263<~0w1));
     print "\n2                0000000";
@@ -155,7 +154,9 @@ in
     print "\n11               0000";
     print (Word32.fmt StringCvt.BIN (0wx616263<~0w11));
     (* print (Word32.toString (Sha1.m prep 0 6)); *)
-    print "\nenc:\n";
+    print "\n\npadded: ";
+    print (hex prep ^ "\n");
+    print "\nencoded:\n";
     print (hex enc);
     print "\n----\n";
     print ""
