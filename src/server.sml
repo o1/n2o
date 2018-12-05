@@ -7,10 +7,10 @@ fun a & b = Word8.andb (a, b)
 
 fun getOctets sock n = Socket.recvVec (sock, n)
 fun getWord8 sock = Word8Vector.sub (Socket.recvVec (sock, 1), 0)
-fun getWord16be sock = PackWord16Big.subVec (Socket.recvVec (sock, 2), 0)
-fun getWord64be cursor = raise Fail "64-bit wide words"
+fun getWord16be sock = Compat.extract_w16be (getOctets sock 2)
+fun getWord64be sock = Compat.extract_w64be (getOctets sock 8)
 
-fun checkCtrlFrame (len : LargeWord.word) fin =
+fun checkCtrlFrame (len : Word64.word) fin =
     if not fin then raise (Fail "Control frames must not be fragmented")
     else if len > 0w125 then raise (Fail "Control frames must not carry payload > 125 bytes")
     else ()
@@ -18,13 +18,13 @@ fun checkCtrlFrame (len : LargeWord.word) fin =
 fun unmask key encoded =
     Word8Vector.mapi (fn (i,el) => Word8.xorb (el, Word8Vector.sub (key, i mod 4))) encoded
 
+fun sendFrame sock frame = raise Fail "not implemented: sendFrame"
+
 fun getFrame sock : Frame =
     let
-        val _ = print "step0\n"
         val b0 = getWord8 sock
         val (fin, rsv1) = (b0 & 0wx80 = 0wx80,b0 & 0wx40 = 0wx40)
         val (rsv2, rsv3) = (b0 & 0wx20 = 0wx20, b0 & 0w10 = 0wx10)
-        val _ = print "step1\n"
         val opcode = b0 & 0wxF
         val b1 = getWord8 sock
         val mask : bool = b1 & 0wx80 = 0wx80
@@ -32,7 +32,7 @@ fun getFrame sock : Frame =
         val len = case lenflag of
                       0w126 => getWord16be sock
                     | 0w127 => getWord64be sock
-                    | _     => Word8.toLarge lenflag
+                    | _     => Compat.w8_to_w64 lenflag
         val ft = case opcode of
                      0wx0 => ContFrame
                    | 0wx1 => TextFrame
@@ -42,7 +42,7 @@ fun getFrame sock : Frame =
                    | 0wxA => (checkCtrlFrame len fin; PongFrame)
                    | _ => raise Fail ("Unknown opcode: 0x" ^ (Word8.fmt StringCvt.HEX opcode))
         val mask = getOctets sock 4
-        val payload = unmask mask (getOctets sock (LargeWord.toInt len))
+        val payload = unmask mask (getOctets sock (Word64.toInt len))
     in
         { fin = fin, rsv1 = rsv1, rsv2 = rsv2, rsv3 = rsv3, typ = ft, payload = payload}
     end
