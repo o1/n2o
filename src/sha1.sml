@@ -12,8 +12,7 @@ val xorb = Word32.xorb
 infixr 5 xorb
 
 fun pad bs =
-    let
-        open W64
+    let open W64
         val len    = V.length bs
         val bitlen = W64.*(W64.fromInt len,0w8)
         val lstbl = bitlen mod 0w512
@@ -21,12 +20,10 @@ fun pad bs =
                      else ((0w512 - lstbl) div 0w8) + 0w64
         val totlen = Int.+(len, toInt addlen)
         val arr = A.array (totlen, 0w0)
-    in
-        A.copyVec {src = bs, dst = arr, di = 0};
-        A.update (arr, len, 0wx80);
-        Compat.pack_w64be (arr, Int.-(totlen,8), bitlen);
-        A.vector arr
-    end
+    in A.copyVec {src = bs, dst = arr, di = 0};
+       A.update (arr, len, 0wx80);
+       Compat.pack_w64be (arr, Int.-(totlen,8), bitlen);
+       A.vector arr end
 
 val hinit : hw32 = (0wx67452301,0wxefcdab89,0wx98badcfe,0wx10325476,0wxc3d2e1f0)
 
@@ -56,12 +53,9 @@ fun k (t) : w32 =
     else raise Fail "'t' is out of range"
 
 fun m bs i t : w32 =
-    let
-        val block = VS.slice (bs, 64*i + 4*t, SOME 4)
+    let val block = VS.slice (bs, 64*i + 4*t, SOME 4)
         val subv = VS.vector block
-    in
-        Word32.fromLarge (PackWord32Big.subVec (subv, 0))
-    end
+    in Word32.fromLarge (PackWord32Big.subVec (subv, 0)) end
 
 fun inc x = x + 1
 
