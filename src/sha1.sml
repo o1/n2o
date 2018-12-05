@@ -62,7 +62,7 @@ fun k (t) : w32 =
     else if (60 <= t) andalso (t <= 79) then 0wxca62c1d6
     else raise Fail "'t' is out of range"
 
-fun m bs i t : Word32.word =
+fun m bs i t : w32 =
     let
         val block = VS.slice (bs, 64*i + 4*t, SOME 4)
         val subv = VS.vector block
