@@ -73,8 +73,9 @@ fun inc x = x + 1
 fun encode bs =
     let
         val padded = pad bs
+        val blocks = ((V.length padded) div 64) - 1
         fun loop_i i (res as (h0,h1,h2,h3,h4)) =
-            if i = (((V.length padded) div 64) - 1) then res
+            if i = blocks then res
             else
                 let
                     fun wt t =
