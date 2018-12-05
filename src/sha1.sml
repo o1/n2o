@@ -27,13 +27,11 @@ fun pad bs =
 
 val hinit : hw32 = (0wx67452301,0wxefcdab89,0wx98badcfe,0wx10325476,0wxc3d2e1f0)
 
-infix <~
 local
     open Word32
-    infix orb xorb andb << >> -
-    val (op-) = Word.-
+    infix orb xorb andb << >>
 in
-fun x <~ n  = (x << n) orb (x >> (0w32 - n))
+fun lrot(x,n)  = (x << n) orb (x >> Word.-(0w32,n))
 fun ch  (b,c,d) = (b andb c) orb ((notb b) andb d)
 fun par (b,c,d) = b xorb c xorb d
 fun maj (b,c,d) = (b andb c) orb (b andb d) orb (c andb d)
@@ -64,7 +62,7 @@ fun w bs i t =
     in if (0 <= t) andalso (t <= 15)
        then m bs i t
        else if (16 <= t) andalso (t <= 79)
-       then (w'(t-3) xorb w'(t-8) xorb w'(t-14) xorb w'(t-16)) <~ 0w1
+       then lrot(w'(t-3) xorb w'(t-8) xorb w'(t-14) xorb w'(t-16), 0w1)
        else raise Fail "t is out of range"
     end
 
@@ -72,8 +70,8 @@ fun loop_t wt t (h as (a,b,c,d,e)) =
     if (t = 80) then h
     else let
         open Word32
-        val tmp = (a <~ 0w5) + f(t,b,c,d) + e + k(t) + wt(t)
-    in loop_t wt (inc t) (tmp,a,b <~ 0w30,c,d) end
+        val tmp = lrot(a,0w5) + f(t,b,c,d) + e + k(t) + wt(t)
+    in loop_t wt (inc t) (tmp,a,lrot(b,0w30),c,d) end
 
 fun encode bs =
     let val padded = pad bs
