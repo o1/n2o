@@ -1,4 +1,4 @@
-structure Sha1 = struct
+structure SHA1 = struct
 
 type w32 = Word32.word
 type hw32 = w32*w32*w32*w32*w32
@@ -8,6 +8,7 @@ structure VS = Word8VectorSlice
 structure A = Word8Array
 structure W64 = Word64
 
+val hinit : hw32 = (0wx67452301,0wxefcdab89,0wx98badcfe,0wx10325476,0wxc3d2e1f0)
 val xorb = Word32.xorb
 infixr 5 xorb
 
@@ -25,16 +26,13 @@ fun pad bs =
        Compat.pack_w64be (arr, Int.-(totlen,8), bitlen);
        A.vector arr end
 
-val hinit : hw32 = (0wx67452301,0wxefcdab89,0wx98badcfe,0wx10325476,0wxc3d2e1f0)
-
 local
     open Word32
     infix orb xorb andb << >>
-in
-fun lrot(x,n)  = (x << n) orb (x >> Word.-(0w32,n))
-fun ch  (b,c,d) = (b andb c) orb ((notb b) andb d)
-fun par (b,c,d) = b xorb c xorb d
-fun maj (b,c,d) = (b andb c) orb (b andb d) orb (c andb d)
+ in fun lrot(x,n)  = (x << n) orb (x >> Word.-(0w32,n))
+    fun ch  (b,c,d) = (b andb c) orb ((notb b) andb d)
+    fun par (b,c,d) = b xorb c xorb d
+    fun maj (b,c,d) = (b andb c) orb (b andb d) orb (c andb d)
 end
 
 fun f (t,b,c,d) =
@@ -43,6 +41,7 @@ fun f (t,b,c,d) =
     else if (40 <= t) andalso (t <= 59) then maj(b,c,d)
     else if (60 <= t) andalso (t <= 79) then par(b,c,d)
     else raise Fail "'t' is out of range"
+
 fun k (t) : w32 =
     if      (00 <= t) andalso (t <= 19) then 0wx5a827999
     else if (20 <= t) andalso (t <= 39) then 0wx6ed9eba1
@@ -88,20 +87,20 @@ fun encode bs =
        A.vector arr end
 end
 
-structure Sha1Test = struct
+structure SHA1Test = struct
 structure V = Word8Vector
 fun hexstr (vec:V.vector):string =
     V.foldr (fn (e,a) => (if (Word8.<= (e, 0wxf)) then "0" else "") ^ (Word8.toString e) ^ a) "" vec
 fun hex v = String.map Char.toLower (hexstr v)
 fun test (x, expected) = let
     open LargeWord
-    open Sha1
+    open SHA1
     infix <~
     val raw = Byte.stringToBytes x
     val actual = hex (encode raw)
-in if expected = actual then ()
-   else raise Fail ("\nExpected: " ^ expected  ^ "\n  actual: " ^ actual ^ "\n")
+ in if expected = actual then ()
+    else raise Fail ("\nExpected: " ^ expected  ^ "\n  actual: " ^ actual ^ "\n")
 end
 end
 
-val _ = (Sha1Test.test("abcdef", "1f8ac10f23c5b5bc1167bda84b833e5c057a77d2"))
+val _ = (SHA1Test.test("abcdef", "1f8ac10f23c5b5bc1167bda84b833e5c057a77d2"))

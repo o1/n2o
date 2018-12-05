@@ -1,7 +1,12 @@
 structure Server = struct
 
-type Req = { cmd : string, path : string, headers : (string*string) list, vers : string }
-type Resp = { status : int, headers : (string*string) list, body : Word8Vector.vector }
+type Req = { cmd : string,
+             path : string,
+             headers : (string*string) list, vers : string }
+
+type Resp = { status : int,
+              headers : (string*string) list,
+              body : Word8Vector.vector }
 
 exception BadRequest of string
 exception NotFound of string
@@ -50,27 +55,29 @@ fun needUpgrade req =
     case header "Upgrade" req of
         SOME (_,v) => (lower v) = "websocket"
       | _ => false
+
 fun getKey req =
     case header "Sec-WebSocket-Key" req of
         NONE => raise BadRequest "No Sec-WebSocket-Key header"
       | SOME (_,key) => let
           val magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
           val k = key^magic
-      in
-          Base64.encode (Sha1.encode (Byte.stringToBytes k))
-      end
+       in Base64.encode (SHA1.encode (Byte.stringToBytes k))
+    end
+
 fun checkHandshake req =
     (if #cmd req <> "GET" then raise BadRequest "Method must be GET" else ();
      if #vers req <> "HTTP/1.1" then raise BadRequest "HTTP version must be 1.1" else ();
      case header "Sec-WebSocket-Version" req of
          SOME (_,"13") => ()
        | _ => raise BadRequest "WebSocket version must be 13")
+
 fun upgrade sock req =
     (checkHandshake req;
-     { status = 101, headers = [("Upgrade", "websocket"),
+     { body = Word8Vector.fromList nil,
+       status = 101, headers = [("Upgrade", "websocket"),
                                 ("Connection", "Upgrade"),
-                                ("Sec-WebSocket-Accept", getKey req)],
-       body = Word8Vector.fromList nil }
+                                ("Sec-WebSocket-Accept", getKey req)] }
     )
 
 fun sendBytes sock bytes = ignore (Socket.sendVec (sock, Word8VectorSlice.full bytes))
@@ -81,10 +88,9 @@ fun fileResp filePath =
     let val stream = BinIO.openIn filePath
         val data = BinIO.inputAll stream
         val () = BinIO.closeIn stream
-    in { status = 200,
+    in { status = 200, body = data,
          headers = [("Content-Type", "text/html"),
-                    ("Content-Length", Int.toString (Word8Vector.length data))],
-         body = data }
+                    ("Content-Length", Int.toString (Word8Vector.length data))] }
     end
 
 fun respCode 101 = "Switching Protocols"
@@ -105,16 +111,14 @@ fun sendError sock code body =
      Socket.close sock)
 
 fun serve sock : Resp =
-    let
-        val req = parseReq (Word8VectorSlice.full (Socket.recvVec (sock, 2048)))
+    let val req = parseReq (Word8VectorSlice.full (Socket.recvVec (sock, 2048)))
         val path = #path req
         val reqPath = case path of
                           "/" => "/index"
                         | p => if String.isPrefix "/ws" p
                                then String.extract (p, 3, NONE)
                                else p
-    in
-        if needUpgrade req then (print "need upgrade\n"; upgrade sock req)
+     in if needUpgrade req then (print "need upgrade\n"; upgrade sock req)
         else (fileResp ("static/html" ^ reqPath ^ ".html"))
              handle Io => (fileResp (String.extract (path, 1, NONE))) handle Io => raise NotFound path
     end
@@ -128,20 +132,17 @@ fun connMain sock =
 
 fun acceptLoop server_sock =
     let val (s, _) = Socket.accept server_sock
-    in
-        print "Accepted a connection.\n";
+     in print "Accepted a connection.\n";
         CML.spawn (fn () => connMain(s));
         acceptLoop server_sock
     end
 
 fun run (program_name, arglist) =
     let val s = INetSock.TCP.socket()
-    in
-        Socket.Ctl.setREUSEADDR (s, true);
+     in Socket.Ctl.setREUSEADDR (s, true);
         Socket.bind(s, INetSock.any 8989);
         Socket.listen(s, 5);
         print "Entering accept loop...\n";
         acceptLoop s
     end
-
 end
