@@ -72,36 +72,37 @@ fun m bs i t : w32 =
 
 fun inc x = x + 1
 
-fun w bs (i,t) =
+fun w bs i t =
     let
-        val w' = w bs
+        val w' = w bs i
     in
         if (0 <= t) andalso (t <= 15)
         then m bs i t
         else if (16 <= t) andalso (t <= 79)
-        then (w'(i,t-3) xorb w'(i,t-8) xorb w'(i,t-14) xorb w'(i,t-16)) <~ 0w1
+        then (w'(t-3) xorb w'(t-8) xorb w'(t-14) xorb w'(t-16)) <~ 0w1
         else raise Fail "t is out of range"
     end
+
+fun loop_t wt t (h as (a,b,c,d,e)) =
+    if (t = 80) then h
+    else
+        let
+            open Word32
+            val tmp = (a <~ 0w5) + f(t,b,c,d) + e + k(t) + wt(t)
+        in
+            loop_t wt (inc t) (tmp,a,b <~ 0w30,c,d)
+        end
 
 fun encode bs =
     let
         val padded = pad bs
         val blocks = (V.length padded) div 64
-        val wt = w padded
         fun loop_i i (res as (h0,h1,h2,h3,h4)) =
             if i = blocks then res
             else
                 let
-                    fun loop_t t (h as (a,b,c,d,e)) =
-                        if (t = 80) then h
-                        else
-                            let
-                                open Word32
-                                val tmp = (a <~ 0w5) + f(t,b,c,d) + e + k(t) + wt(i,t)
-                            in
-                                loop_t (inc t) (tmp,a,b <~ 0w30,c,d)
-                            end
-                    val (a,b,c,d,e) = loop_t 0 (h0,h1,h2,h3,h4)
+                    val wt = w padded i
+                    val (a,b,c,d,e) = loop_t wt 0 (h0,h1,h2,h3,h4)
                 in
                     loop_i (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e)
                 end
