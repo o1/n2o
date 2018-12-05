@@ -2,20 +2,17 @@ structure WebSocket = struct
 datatype FrameType = ContFrame | TextFrame | BinFrame | CloseFrame | PingFrame | PongFrame
 type Frame = { fin : bool, rsv1 : bool, rsv2 : bool, rsv3 : bool,
                typ : FrameType, payload : Word8Vector.vector }
-exception FrameParse of string
-exception NotSupported of string
-
 infix 5 &
 fun a & b = Word8.andb (a, b)
 
 fun getOctets sock n = Socket.recvVec (sock, n)
 fun getWord8 sock = Word8Vector.sub (Socket.recvVec (sock, 1), 0)
 fun getWord16be sock = PackWord16Big.subVec (Socket.recvVec (sock, 2), 0)
-fun getWord64be cursor = raise NotSupported "64-bit wide words"
+fun getWord64be cursor = raise Fail "64-bit wide words"
 
 fun checkCtrlFrame (len : LargeWord.word) fin =
-    if not fin then raise (FrameParse "Control frames must not be fragmented")
-    else if len > 0w125 then raise (FrameParse "Control frames must not carry payload > 125 bytes")
+    if not fin then raise (Fail "Control frames must not be fragmented")
+    else if len > 0w125 then raise (Fail "Control frames must not carry payload > 125 bytes")
     else ()
 
 fun unmask key encoded =
@@ -43,7 +40,7 @@ fun getFrame sock : Frame =
                    | 0wx8 => (checkCtrlFrame len fin; CloseFrame)
                    | 0wx9 => (checkCtrlFrame len fin; PingFrame)
                    | 0wxA => (checkCtrlFrame len fin; PongFrame)
-                   | _ => raise FrameParse ("Unknown opcode: 0x" ^ (Word8.fmt StringCvt.HEX opcode))
+                   | _ => raise Fail ("Unknown opcode: 0x" ^ (Word8.fmt StringCvt.HEX opcode))
         val mask = getOctets sock 4
         val payload = unmask mask (getOctets sock (LargeWord.toInt len))
     in
@@ -117,7 +114,7 @@ fun getKey req =
           val magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
           val k = key^magic
       in
-          Base64.encode (SHA1.sha (Byte.stringToBytes k))
+          Base64.encode (Sha1.encode (Byte.stringToBytes k))
       end
 fun checkHandshake req =
     (if #cmd req <> "GET" then raise BadRequest "Method must be GET" else ();

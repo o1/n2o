@@ -2,7 +2,7 @@
 while true; do
     clear
     echo 'Compiling...'
-    mlton -output n2o.exe -default-ann 'allowVectorExps true' src/sha-1.sml 
+    mlton -output n2o.exe n2o.mlb
     echo 'OK'
     # ml-build n2o.cm Main.main n2o.nj
     # sml @SMLload=n2o.nj &

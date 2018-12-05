@@ -1,226 +1,142 @@
-(* SHA-1 *)
+structure Sha1 = struct
 
-(* github.com/srdqty/sml-sha1
-   Copyright (c) 2014 Sophia Donataccio (MIT license) *)
+type word32 = Word32.word
 
-signature SHA1 =
-sig
-  type 'a byte_reader = 'a * int -> Word8Vector.vector * 'a
-  val sha1 : 'a byte_reader -> 'a -> Word8Vector.vector
-  val sha : Word8Vector.vector -> Word8Vector.vector
-  val sha1String : 'a byte_reader -> 'a -> string
-end
+structure V = Word8Vector
+structure VS = Word8VectorSlice
+structure A = Word8Array
+structure W64 = Word64
 
-structure SHA1 : SHA1 =
-struct
-  type 'a byte_reader = 'a * int -> Word8Vector.vector * 'a
-  local
-    fun toBitSize x = Word64.*(x, 0w8)
+val xorb = Word32.xorb
 
+infixr 5 xorb
+infixr 3 /> fun f /> y = fn x => f (x, y)
 
-    fun explodeSize size (* in bits *) =
-      let
-        val s7 = Word64.>>(Word64.<<(size, 0w56), 0w56)
-        val s6 = Word64.>>(Word64.<<(size, 0w48), 0w56)
-        val s5 = Word64.>>(Word64.<<(size, 0w40), 0w56)
-        val s4 = Word64.>>(Word64.<<(size, 0w32), 0w56)
-        val s3 = Word64.>>(Word64.<<(size, 0w24), 0w56)
-        val s2 = Word64.>>(Word64.<<(size, 0w16), 0w56)
-        val s1 = Word64.>>(Word64.<<(size, 0w08), 0w56)
-        val s0 = Word64.>>(size                 , 0w56)
-      in
-        ( Word8.fromLarge (Word64.toLarge s0)
-        , Word8.fromLarge (Word64.toLarge s1)
-        , Word8.fromLarge (Word64.toLarge s2)
-        , Word8.fromLarge (Word64.toLarge s3)
-        , Word8.fromLarge (Word64.toLarge s4)
-        , Word8.fromLarge (Word64.toLarge s5)
-        , Word8.fromLarge (Word64.toLarge s6)
-        , Word8.fromLarge (Word64.toLarge s7))
-      end
+val tobitlen = (W64.* /> 0w8) o W64.fromInt
+fun const x = fn _ => x
 
-    fun createLastChunk (chunk, messageByteSize) =
-      let
-        val chunkSize = Word8Vector.length chunk
-        val (s0, s1, s2, s3, s4, s5, s6, s7) =
-          (* Size in bits is stored in the chunk *)
-          explodeSize (toBitSize messageByteSize)
-        fun buildChunk i =
-          if i < chunkSize then Word8Vector.sub (chunk, i)
-          else if i = chunkSize then 0wx80
-          else if i = 56 then s0
-          else if i = 57 then s1
-          else if i = 58 then s2
-          else if i = 59 then s3
-          else if i = 60 then s4
-          else if i = 61 then s5
-          else if i = 62 then s6
-          else if i = 63 then s7
-          else 0w0
-      in
-        Word8Vector.tabulate (64, buildChunk)
-      end
-
-    fun addPadding chunk =
-      let
-        val chunkSize = Word8Vector.length chunk
-        fun buildChunk i =
-          if i < chunkSize then Word8Vector.sub (chunk, i)
-          else if i = chunkSize then 0wx80
-          else 0w0
-      in
-        Word8Vector.tabulate (64, buildChunk)
-      end
-
-    fun createPadChunk messageByteSize =
-      let
-        val (s0, s1, s2, s3, s4, s5, s6, s7) =
-          explodeSize (toBitSize messageByteSize)
-        fun buildChunk i =
-          if i < 56 then 0w0
-          else if i = 56 then s0 else if i = 57 then s1
-          else if i = 58 then s2 else if i = 59 then s3
-          else if i = 60 then s4 else if i = 61 then s5
-          else if i = 62 then s6 else if i = 63 then s7
-          else raise (Fail "createPadChunk: invalid chunk size")
-      in
-        Word8Vector.tabulate (64, buildChunk)
-      end
-
-    datatype 'a ChunkReaderState =
-      Reading of 'a byte_reader * 'a * Word64.word
-    | PadChunk of Word8Vector.vector
-    | Empty
-
-  in (* local *)
-
-    fun make (byteReader, byteStreamState) =
-      Reading (byteReader, byteStreamState, 0w0)
-
-    fun readChunk Empty = NONE
-      | readChunk (PadChunk chunk) = SOME (chunk, Empty)
-      | readChunk (Reading(byteReader, byteStreamState, totalBytesRead)) =
-        let val (chunk, nextByteStreamState) = byteReader (byteStreamState, 64)
-            val chunkSize = Word8Vector.length chunk
-            val nextTotalBytesRead = Word64.+(Word64.fromInt chunkSize, totalBytesRead)
-         in if chunkSize = 64 then SOME (chunk, Reading(byteReader, nextByteStreamState, nextTotalBytesRead))
-            else if chunkSize < 56 then SOME(createLastChunk (chunk, nextTotalBytesRead), Empty)
-            else SOME(addPadding chunk, PadChunk (createPadChunk nextTotalBytesRead)) end
-    end
-
-  local
-    fun init (chunk, wArray) =
-      let
-        fun sub (c, i) =
-          Word32.fromLarge(PackWord32Big.subVec (c, i))
-        fun calcW i =
-          let
-            val w1 = Word32Array.sub(wArray, i - 3)
-            val w2 = Word32Array.sub(wArray, i - 8)
-            val w3 = Word32Array.sub(wArray, i - 14)
-            val w4 = Word32Array.sub(wArray, i - 16)
-            fun lrot1 w = Word32.orb(Word32.<<(w, 0w1), Word32.>>(w, 0w31))
-          in
-            lrot1 (Word32.xorb(Word32.xorb(Word32.xorb(w1, w2), w3), w4))
-          end
-        fun loop1 i =
-          if 0 <= i andalso i <= 15 then
-            (Word32Array.update (wArray, i, sub (chunk, i))
-            ; loop1 (i + 1))
-          else ()
-        fun loop2 i =
-          if 16 <= i andalso i <= 79 then
-            (Word32Array.update (wArray, i, calcW i)
-            ; loop2 (i + 1))
-          else ()
-      in ( loop1 0 ; loop2 16) end
-
-    fun pack (h0, h1, h2, h3, h4) =
-      let val result = Word8Array.array (20, 0wx0)
-      in (PackWord32Big.update(result, 0, Word32.toLarge h0)
-        ; PackWord32Big.update(result, 1, Word32.toLarge h1)
-        ; PackWord32Big.update(result, 2, Word32.toLarge h2)
-        ; PackWord32Big.update(result, 3, Word32.toLarge h3)
-        ; PackWord32Big.update(result, 4, Word32.toLarge h4)
-        ; Word8Array.vector result)
-      end
-
-    fun processData (wArray, h0, h1, h2, h3, h4) =
-      let fun loop (i, a, b, c, d, e) =
-          let fun lrot5 w = Word32.orb(Word32.<<(w, 0w5),Word32.>>(w, 0w27))
-              fun lrot30 w = Word32.orb(Word32.<<(w, 0w30), Word32.>>(w, 0w2))
-              fun calcF (i, b, c, d) =
-              if 0 <= i andalso i <= 19 then Word32.orb(Word32.andb(b, c), Word32.andb(Word32.notb b, d))
-              else if 20 <= i andalso i <= 39 then Word32.xorb(Word32.xorb(b, c), d)
-              else if 40 <= i andalso i <= 59 then Word32.orb(Word32.orb(Word32.andb(b, c), Word32.andb(b, d)),
-                                                              Word32.andb(c, d))
-              else (* 60 <= i <= 79 *) Word32.xorb(Word32.xorb(b, c), d)
-            fun calcK i =
-              if 0 <= i andalso i <= 19 then       0wx5a827999
-              else if 20 <= i andalso i <= 39 then 0wx6ed9eba1
-              else if 40 <= i andalso i <= 59 then 0wx8f1bbcdc
-              else (* 60 <= i <= 79 *)             0wxca62c1d6
-            fun calcA (a, f, e, k, w) = Word32.+(Word32.+(Word32.+(Word32.+(lrot5 a, f), e), k), w)
-          in if 0 <= i andalso i <= 79 then
-              let val f = calcF (i, b, c, d)
-                  val k = calcK i
-                  val a' = calcA (a, f, e, k, Word32Array.sub(wArray, i))
-                  val b' = a
-                  val c' = lrot30 b
-                  val d' = c
-                  val e' = d
-              in loop (i + 1, a', b', c', d', e') end
-            else (h0 + a, h1 + b, h2 + c, h3 + d, h4 + e) end
-      in loop (0, h0, h1, h2, h3, h4) end
-
-  in (* local *)
-
-    fun sha1 byteReader byteStreamState =
-      let val workingArray = Word32Array.array (80, 0wx0)
-          fun loopOverChunks (state, h0, h1, h2, h3, h4) =
-         case readChunk state of
-            NONE => pack (h0, h1, h2, h3, h4)
-          | SOME (chunk, next) =>
-            let val _ = init (chunk, workingArray)
-                val (h0', h1', h2', h3', h4') = processData (workingArray, h0, h1, h2, h3, h4)
-             in loopOverChunks (next, h0', h1', h2', h3', h4') end
-         in loopOverChunks (make (byteReader, byteStreamState),
-            0wx67452301, 0wxefcdab89, 0wx98badcfe, 0wx10325476, 0wxc3d2e1f0) end
-      end
-
-  fun makeSHAreader vector =
-      let val size = Word8Vector.length vector
-          fun reader (i,n) = (vector,size)
-           in reader end
-
-  fun sha vector = sha1 (makeSHAreader vector) 0
-
-  fun sha1String byteReader byteStreamState = let
-    val hashVector = sha1 byteReader byteStreamState
-
-    fun ithNibbleToHexDigitChar i = let
-      fun getNibble i = let
-        fun isEven n = n mod 2 = 0
-        fun getMostSignificantNibble byte = Word8.>>(byte, 0w4)
-        fun getLeastSignificantNibble byte = Word8.andb(byte, 0wx0f)
-        val byteI = Word8Vector.sub (hashVector, i div 2)
-      in
-        if isEven i
-          then getMostSignificantNibble byteI
-          else getLeastSignificantNibble byteI
-      end
-
-      fun nibbleToHexDigitChar nibble =
-        case Char.fromString (Word8.toString nibble) of
-            NONE => raise (Fail "sha1String: invalid hex digit")
-          | SOME ch => Char.toLower ch
-
+fun pad (bs : V.vector) : V.vector =
+    let
+        open W64
+        val len    = V.length bs
+        val bitlen = tobitlen len
+        val lstbl = bitlen mod 0w512
+        val addlen = if lstbl < 0w448 then ((0w448 - lstbl) div 0w8) + 0w8
+                     else ((0w512 - lstbl) div 0w8) + 0w64
+        val totlen = Int.+(len, toInt addlen)
+        val arr = A.array (totlen, 0w0)
     in
-      nibbleToHexDigitChar (getNibble i)
+        A.copyVec {src = bs, dst = arr, di = 0};
+        A.update (arr, len,             0wx80);
+        A.update (arr, Int.-(totlen,8), Compat.w64_to_w8(Word64.>>(bitlen,0w56)));
+        A.update (arr, Int.-(totlen,7), Compat.w64_to_w8(Word64.>>(bitlen,0w48)));
+        A.update (arr, Int.-(totlen,6), Compat.w64_to_w8(Word64.>>(bitlen,0w40)));
+        A.update (arr, Int.-(totlen,5), Compat.w64_to_w8(Word64.>>(bitlen,0w32)));
+        A.update (arr, Int.-(totlen,4), Compat.w64_to_w8(Word64.>>(bitlen,0w24)));
+        A.update (arr, Int.-(totlen,3), Compat.w64_to_w8(Word64.>>(bitlen,0w16)));
+        A.update (arr, Int.-(totlen,2), Compat.w64_to_w8(Word64.>>(bitlen,0w8)));
+        A.update (arr, Int.-(totlen,1), Compat.w64_to_w8(bitlen));
+        A.vector arr
     end
 
-  in
-    CharVector.tabulate (40, ithNibbleToHexDigitChar)
-  end
+val hinit = (0wx67452301:word32,0wxefcdab89:word32,0wx98badcfe:word32,0wx10325476:word32,0wxc3d2e1f0:word32)
 
+infix <~
+local
+    open Word32
+    infix orb xorb andb << >> -
+    val (op-) = Word.-
+in
+fun x <~ n  = (x << n) orb (x >> (0w32 - n))
+fun ch  (b,c,d) = (b andb c) orb ((notb b) andb d)
+fun par (b,c,d) = b xorb c xorb d
+fun maj (b,c,d) = (b andb c) orb (b andb d) orb (c andb d)
 end
+
+fun f (t,b,c,d) =
+    if      (00 <= t) andalso (t <= 19) then ch(b,c,d)
+    else if (20 <= t) andalso (t <= 39) then par(b,c,d)
+    else if (40 <= t) andalso (t <= 59) then maj(b,c,d)
+    else if (60 <= t) andalso (t <= 79) then par(b,c,d)
+    else raise Fail "'t' is out of range"
+fun k (t) : word32 =
+    if      (00 <= t) andalso (t <= 19) then 0wx5a827999
+    else if (20 <= t) andalso (t <= 39) then 0wx6ed9eba1
+    else if (40 <= t) andalso (t <= 59) then 0wx8f1bbcdc
+    else if (60 <= t) andalso (t <= 79) then 0wxca62c1d6
+    else raise Fail "'t' is out of range"
+
+fun m bs i t : Word32.word =
+    let
+        val block = VS.slice (bs, 64*i + 4*t, SOME 4)
+        val subv = VS.vector block
+    in
+        Word32.fromLarge (PackWord32Big.subVec (subv, 0))
+    end
+
+fun inc x = x + 1
+
+fun hexstr (vec:V.vector):string =
+    V.foldr (fn (e,a) => (if (Word8.<= (e, 0wxf)) then "0" else "") ^ (Word8.toString e) ^ a) "" vec
+fun hex v = String.map Char.toLower (hexstr v)
+
+fun w bs (i,t) =
+    let
+        val w' = w bs
+    in
+        if (0 <= t) andalso (t <= 15)
+        then m bs i t
+        else if (16 <= t) andalso (t <= 79)
+        then (w'(i,t-3) xorb w'(i,t-8) xorb w'(i,t-14) xorb w'(i,t-16)) <~ 0w1
+        else raise Fail "t is out of range"
+    end
+
+fun encode bs =
+    let
+        val padded = pad bs
+        val blocks = (V.length padded) div 64
+        val wt = w padded
+        fun loop_i i (res as (h0,h1,h2,h3,h4)) =
+            if i = blocks then res
+            else
+                let
+                    fun loop_t t (h as (a,b,c,d,e)) =
+                        if (t = 80) then h
+                        else
+                            let
+                                open Word32
+                                val tmp = (a <~ 0w5) + f(t,b,c,d) + e + k(t) + wt(i,t)
+                            in
+                                loop_t (inc t) (tmp,a,b <~ 0w30,c,d)
+                            end
+                    val (a,b,c,d,e) = loop_t 0 (h0,h1,h2,h3,h4)
+                in
+                    loop_i (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e)
+                end
+        val (h0,h1,h2,h3,h4) = loop_i 0 hinit
+        val arr = A.array (20,0w0)
+        fun pack i x = PackWord32Big.update (arr,i,Word32.toLarge x)
+    in
+        pack 0 h0; pack 1 h1; pack 2 h2; pack 3 h3; pack 4 h4;
+        A.vector arr
+    end
+end
+
+structure Sha1Test = struct
+fun test (x, expected) = let
+    open LargeWord
+    open Sha1
+    infix <~
+    val raw = Byte.stringToBytes x
+    (* val padded = pad raw *)
+    val actual = hex (encode raw)
+in
+    (* print "\n\npadded: "; *)
+    (* print ((hex padded) ^ "\n"); *)
+    if expected = actual then ()
+    else raise Fail ("\nExpected: " ^ expected  ^ "\n  actual: " ^ actual ^ "\n");
+    ()
+end
+end
+
+val _ = (Sha1Test.test("abcdef", "1f8ac10f23c5b5bc1167bda84b833e5c057a77d2"))
