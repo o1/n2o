@@ -17,7 +17,7 @@ infixr 3 /> fun f /> y = fn x => f (x, y)
 val tobitlen = (LW.* /> 0w8) o LW.fromInt
 fun const x = fn _ => x
 
-fun preproc (bs : V.vector) : V.vector =
+fun pad (bs : V.vector) : V.vector =
     let
         open LW
         val len = V.length bs
@@ -69,36 +69,36 @@ fun m bs i t : Word32.word =
     end
 
 fun inc x = x + 1
-fun loop_i bs i (res as (h0,h1,h2,h3,h4)) =
-    if i = (((V.length bs) div 64) - 1) then res
-    else
-        let
-            fun wt t =
-                if (0 <= t) andalso (t <= 15)
-                then m bs i t
-                else if (16 <= t) andalso (t <= 79)
-                then (wt(t-3) xorb wt(t-8) xorb wt(t-14) xorb wt(t-16)) <~ 0w1
-                else raise Fail "t is out of range"
-            fun loop_t t (h as (a,b,c,d,e)) =
-                if (t = 80) then h
-                else
-                    let
-                        open Word32
-                        val tmp = (a <~ 0w5) + f(t,b,c,d) + e + k(t) + wt(t)
-                    in
-                        (* print (Int.toString i); print ":"; *)
-                        (* print (Int.toString t);print "; "; *)
-                        (* print (Word32.toString (wt t)); print "; "; *)
-                        loop_t (inc t) (tmp,a,b <~ 0w30,c,d)
-                    end
-            val (a,b,c,d,e) = loop_t 0 (h0,h1,h2,h3,h4)
-        in
-            loop_i bs (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e)
-        end
 
 fun encode bs =
     let
-        val (h0,h1,h2,h3,h4) = loop_i (preproc bs) 0 hinit
+        val padded = pad bs
+        fun loop_i i (res as (h0,h1,h2,h3,h4)) =
+            if i = (((V.length padded) div 64) - 1) then res
+            else
+                let
+                    fun wt t =
+                        if (0 <= t) andalso (t <= 15)
+                        then m padded i t
+                        else if (16 <= t) andalso (t <= 79)
+                        then (wt(t-3) xorb wt(t-8) xorb wt(t-14) xorb wt(t-16)) <~ 0w1
+                        else raise Fail "t is out of range"
+                    fun loop_t t (h as (a,b,c,d,e)) =
+                        if (t = 80) then h
+                        else
+                            let
+                                open Word32
+                                val tmp = (a <~ 0w5) + f(t,b,c,d) + e + k(t) + wt(t)
+                            in
+                                (* print (Int.toString i); print ":"; *)
+                                (* print (Int.toString t);print "; "; *)
+                                (* print (Word32.toString (wt t)); print "; "; *)
+                                loop_t (inc t) (tmp,a,b <~ 0w30,c,d)
+                            end                    val (a,b,c,d,e) = loop_t 0 (h0,h1,h2,h3,h4)
+                in
+                    loop_i (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e)
+                end
+        val (h0,h1,h2,h3,h4) = loop_i 0 hinit
         val arr = A.array (20,0w0)
         fun pack i x = PackWord32Big.update (arr,i,Word32.toLarge x)
     in
@@ -117,8 +117,8 @@ val _ = let
         V.foldr (fn (e,a) => (if (Word8.<= (e, 0wxf)) then "0" else "") ^ (Word8.toString e) ^ a) "" vec
     fun hex v = String.map Char.toLower (hexstr v)
     (* val prep = Sha1.preproc (Byte.stringToBytes "abcdefghijklmnopqrstuvwxyz") *)
-    val prep = preproc (Byte.stringToBytes "abcde")
-    val enc = encode prep
+    val pad = pad (Byte.stringToBytes "abcde")
+    val enc = encode pad
 in
     print "\nrotation:";
     print "\n32-bit layout:   00000000000000000000000000000000\n";
@@ -148,7 +148,7 @@ in
     print (Word32.fmt StringCvt.BIN (0wx616263<~0w11));
     (* print (Word32.toString (Sha1.m prep 0 6)); *)
     print "\n\npadded: ";
-    print (hex prep ^ "\n");
+    print (hex pad ^ "\n");
     print "\nencoded:\n";
     print (hex enc);
     print "\n----\n";
