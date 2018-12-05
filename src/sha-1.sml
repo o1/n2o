@@ -23,7 +23,7 @@ fun pad (bs : V.vector) : V.vector =
         val len = V.length bs
         val bitlen = LW.mod ((tobitlen len), 0w512)
         val addlen = if bitlen < 0w448 then ((0w448 - bitlen) div 0w8) + 0w8
-                     else ((0w512 - bitlen) div 0w8) + 0w512
+                     else ((0w512 - bitlen) div 0w8) + 0w64
         val totlen = (fromInt len) + addlen
         val arr = A.array (toInt totlen, 0w0)
     in
@@ -106,6 +106,10 @@ fun encode bs =
         Word32Vector.appi (fn (i,h) => ignore (pack i h)) (Word32Vector.fromList[h0,h1,h2,h3,h4]);
         A.vector arr
     end
+
+fun hexstr (vec:V.vector):string =
+    V.foldr (fn (e,a) => (if (Word8.<= (e, 0wxf)) then "0" else "") ^ (Word8.toString e) ^ a) "" vec
+fun hex v = String.map Char.toLower (hexstr v)
 end
 
 structure V = Word8Vector
@@ -114,39 +118,11 @@ val _ = let
     open LargeWord
     open Sha1
     infix <~
-    fun hexstr (vec:V.vector):string =
-        V.foldr (fn (e,a) => (if (Word8.<= (e, 0wxf)) then "0" else "") ^ (Word8.toString e) ^ a) "" vec
-    fun hex v = String.map Char.toLower (hexstr v)
     (* val prep = Sha1.preproc (Byte.stringToBytes "abcdefghijklmnopqrstuvwxyz") *)
-    val pad = pad (Byte.stringToBytes "abcde")
+    (* val pad = pad (Byte.stringToBytes "abcde") *)
+    val pad = pad (Byte.stringToBytes "G6V0AJ9Tv3nj/iMOR8Z/pQ==258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
     val enc = encode pad
 in
-    print "\nrotation:";
-    print "\n32-bit layout:   00000000000000000000000000000000\n";
-    print "\n0                000000000";
-    print (Word32.fmt StringCvt.BIN 0wx616263);
-    print "\n1                00000000";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w1));
-    print "\n2                0000000";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w2));
-    print "\n3                000000";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w3));
-    print "\n4                00000";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w4));
-    print "\n5                0000";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w5));
-    print "\n6                000";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w6));
-    print "\n7                00";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w7));
-    print "\n8                0";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w8));
-    print "\n9                ";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w9));
-    print "\n10               ";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w10));
-    print "\n11               0000";
-    print (Word32.fmt StringCvt.BIN (0wx616263<~0w11));
     (* print (Word32.toString (Sha1.m prep 0 6)); *)
     print "\n\npadded: ";
     print (hex pad ^ "\n");
