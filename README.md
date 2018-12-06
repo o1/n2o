@@ -17,7 +17,6 @@ Run
 Open http://localhost:8989 or use `wscat`
 
 ```
-$ ./n2o
 $ wscat -c ws://127.0.0.1:8989/ws/
 connected (press CTRL+C to quit)
 > helo
