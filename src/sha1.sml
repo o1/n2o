@@ -9,8 +9,6 @@ structure A = Word8Array
 structure W64 = Word64
 
 val hinit : hw32 = (0wx67452301,0wxefcdab89,0wx98badcfe,0wx10325476,0wxc3d2e1f0)
-val xorb = Word32.xorb
-infixr 5 xorb
 
 fun pad bs =
     let open W64
@@ -35,7 +33,7 @@ local open Word32
 end
 
 fun fk t =
-    if      (00 <= t) andalso (t <= 19) then (ch, 0wx5a827999:w32)
+         if (00 <= t) andalso (t <= 19) then (ch, 0wx5a827999:w32)
     else if (20 <= t) andalso (t <= 39) then (par,0wx6ed9eba1)
     else if (40 <= t) andalso (t <= 59) then (maj,0wx8f1bbcdc)
     else if (60 <= t) andalso (t <= 79) then (par,0wxca62c1d6)
@@ -46,14 +44,12 @@ fun m bs i t : w32 =
         val subv = VS.vector block
      in Word32.fromLarge (PackWord32Big.subVec (subv, 0)) end
 
-fun inc x = x + 1
-
 fun w bs i t =
     let val w' = w bs i
      in if (0 <= t) andalso (t <= 15)
         then m bs i t
         else if (16 <= t) andalso (t <= 79)
-        then lrot(w'(t-3) xorb w'(t-8) xorb w'(t-14) xorb w'(t-16), 0w1)
+        then lrot(Word32.xorb(Word32.xorb(w'(t-3),w'(t-8)),Word32.xorb(w'(t-14),w'(t-16))),0w1)
         else raise Fail "t is out of range"
     end
 
@@ -62,13 +58,13 @@ fun loop_t wt t (h as (a,b,c,d,e)) =
     else let open Word32
              val (f,k) = fk(t)
              val tmp = lrot(a,0w5) + f(b,c,d) + e + k + wt(t)
-      in loop_t wt (inc t) (tmp,a,lrot(b,0w30),c,d) end
+      in loop_t wt (Int.+(t,1)) (tmp,a,lrot(b,0w30),c,d) end
 
 fun loop_i bs i (res as (h0,h1,h2,h3,h4)) =
     if i = (V.length bs) div 64 then res
     else let val wt = w bs i
              val (a,b,c,d,e) = loop_t wt 0 (h0,h1,h2,h3,h4)
-         in loop_i bs (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e) end
+         in loop_i bs (i+1) (h0+a,h1+b,h2+c,h3+d,h4+e) end
 
 fun encode bs =
     let val (h0,h1,h2,h3,h4) = loop_i (pad bs) 0 hinit
