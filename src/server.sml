@@ -60,8 +60,7 @@ fun getKey req =
     case header "Sec-WebSocket-Key" req of
          NONE => raise BadRequest "No Sec-WebSocket-Key header"
        | SOME (_,key) => let val magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-                             val k = key^magic
-                          in Base64.encode (SHA1.encode (Byte.stringToBytes k)) end
+                          in Base64.encode(SHA1.encode(Byte.stringToBytes(key^magic))) end
 
 fun checkHandshake req =
     (if #cmd req <> "GET" then raise BadRequest "Method must be GET" else ();
