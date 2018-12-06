@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="" />
     <meta name="author" content="Maxim Sokhatsky" />
-    <title>SERVER</title>
+    <title>COMPAT</title>
     <link rel="stylesheet" href="https://synrc.space/synrc.css" />
 </head>
 
@@ -20,27 +20,23 @@
 
 <header>
     <a href="../index.html"><img src="https://o1.network/o1.svg"></a>
-    <h1>SERVER</h1>
+    <h1>COMPAT</h1>
 </header>
 
 <main>
     <section>
         <h3>INTRO</h3>
-        <p>The <b>server</b> module provides static HTTP and WebSocket server.</p>
+        <p>The <b>compat</b> module provides binary compatibility API for SML/NJ and MLton.</p>
     </section>
     <section>
-        <h3>IO</h3>
-        <figure><figcaption>Listing 1. Request</figcaption><code>
- type Req = { cmd : string,
-              path : string,
-              headers : (string*string) list, vers : string }
-        </code></figure>
-        <figure><figcaption>Listing 1. Response</figcaption><code>
- type Resp = { status : int,
-               headers : (string*string) list,
-               body : Word8Vector.vector }
-        </code></figure>
+        <h3>API</h3>
+        <h4>w8_to_w64</h4>
+        <h4>w64_to_w8</h4>
+        <h4>pack_w64be</h4>
+        <h4>extract_w16be</h4>
+        <h4>extract_w64be</h4>
     </section>
+
 </main>
 
 <footer>
