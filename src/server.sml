@@ -11,23 +11,24 @@ type Resp = { status : int,
 exception BadRequest of string
 exception NotFound of string
 
-fun collect mark i sepLen acc slc =
-    if i > (mark + sepLen) then
-         (Word8VectorSlice.subslice (slc, mark, SOME ((i-mark)-sepLen)))::acc
+fun collect mark i sl acc slc =
+    if i > (mark + sl)
+    then (Word8VectorSlice.subslice (slc, mark, SOME ((i-mark)-sl)))::acc
     else acc
 
-fun recur s l len sepLen mark i [] acc =
-    recur s l len sepLen i i l (collect mark i sepLen acc s)
-  | recur s l len sepLen mark i (b::bs) acc =
-    if i = len then List.rev (collect mark i 0 acc s)
-    else recur s l len sepLen mark (i+1)
+fun recur s l len sl mark i [] acc =
+    recur s l len sl i i l (collect mark i sl acc s)
+  | recur s l len sl mark i (b::bs) acc =
+    if i = len
+    then List.rev (collect mark i 0 acc s)
+    else recur s l len sl mark (i+1)
          (if b = Word8VectorSlice.sub (s, i) then bs else l) acc
 
 fun tokens slc (sep : string) =
     let val lst = map (Word8.fromInt o Char.ord) (String.explode sep)
         val len = Word8VectorSlice.length slc
-        val sepLen = String.size sep
-    in recur slc lst len sepLen 0 0 lst [] end
+     in recur slc lst len (String.size sep) 0 0 lst []
+    end
 
 val sliceToStr = Byte.bytesToString o Word8VectorSlice.vector
 fun tokens' slc (sep : string) = map sliceToStr (tokens slc sep)
@@ -96,7 +97,9 @@ fun respCode 101 = "Switching Protocols"
   | respCode _ = "Internal Server Error"
 
 fun sendResp sock {status=status,headers=headers,body=body} =
-    (sendList sock ["HTTP/1.1 ", Int.toString status, " ", respCode status, "\r\n", writeHeaders headers, "\r\n"];
+    (sendList sock ["HTTP/1.1 ", Int.toString status,
+                            " ", respCode status, "\r\n",
+                                 writeHeaders headers, "\r\n"];
      sendBytes sock body;
      sendStr sock "\r\n\r\n")
 
@@ -116,7 +119,8 @@ fun serve sock : Resp =
     let val req = parseReq (Word8VectorSlice.full (Socket.recvVec (sock, 2048)))
         val path = #path req
         val reqPath = router path
-     in if needUpgrade req then (print "need upgrade\n"; upgrade sock req)
+     in if needUpgrade req
+        then (print "need upgrade\n"; upgrade sock req)
         else (fileResp ("static/html" ^ reqPath ^ ".html"))
              handle Io => (fileResp (String.extract (path, 1, NONE)))
              handle Io => raise NotFound path
