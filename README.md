@@ -9,7 +9,7 @@ $ mlton n2o.mlb && ./n2o
 $ ml-build n2o.cm Main.main n2o.nj && sml @SMLload=n2o.nj
 ```
 
-Open http://localhost:8989/index
+Open http://localhost:8989
 
 Credits
 -------
