@@ -1,8 +1,7 @@
 N2O for Standard ML
 ===================
 
-Here is yet simple HTTP static server implemented using
-CML loop with INetSock.TCP acceptor loop.
+Here is example echo server, using N2O HTTP static and WebSocket servers.
 
 ```
 $ mlton n2o.mlb && ./n2o
