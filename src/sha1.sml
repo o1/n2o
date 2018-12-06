@@ -73,15 +73,14 @@ fun loop_t wt t (h as (a,b,c,d,e)) =
         val tmp = lrot(a,0w5) + f(t,b,c,d) + e + k(t) + wt(t)
     in loop_t wt (inc t) (tmp,a,lrot(b,0w30),c,d) end
 
+fun loop_i bs i (res as (h0,h1,h2,h3,h4)) =
+    if i = (V.length padded) div 64 then res
+    else let val wt = w bs i
+             val (a,b,c,d,e) = loop_t wt 0 (h0,h1,h2,h3,h4)
+         in loop_i bs (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e) end
+
 fun encode bs =
-    let val padded = pad bs
-        val blocks = (V.length padded) div 64
-        fun loop_i i (res as (h0,h1,h2,h3,h4)) =
-            if i = blocks then res
-            else let val wt = w padded i
-                     val (a,b,c,d,e) = loop_t wt 0 (h0,h1,h2,h3,h4)
-                 in loop_i (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e) end
-        val (h0,h1,h2,h3,h4) = loop_i 0 hinit
+    let val (h0,h1,h2,h3,h4) = loop_i (pad bs) 0 hinit
         val arr = A.array (20,0w0)
         fun pack i x = PackWord32Big.update (arr,i,Word32.toLarge x)
     in pack 0 h0; pack 1 h1; pack 2 h2; pack 3 h3; pack 4 h4;
