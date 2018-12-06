@@ -26,7 +26,7 @@ fun check (len : W64.word) fin =
     else ()
 
 fun unmask key encoded =
-    V.mapi (fn (i,el) => W8.xorb (el, V.sub (key, i mod 4))) encoded
+    V.mapi (fn (i,el) => W8.xorb(el,V.sub(key,i mod 4))) encoded
 
 fun send sock frame =
     raise Fail "not implemented: sendFrame"
