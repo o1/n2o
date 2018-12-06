@@ -8,6 +8,9 @@ structure VS = Word8VectorSlice
 structure A = Word8Array
 structure W64 = Word64
 
+val xorb = Word32.xorb
+infixr 5 xorb
+
 val hinit : hw32 = (0wx67452301,0wxefcdab89,0wx98badcfe,0wx10325476,0wxc3d2e1f0)
 
 fun pad bs =
@@ -49,7 +52,7 @@ fun w bs i t =
      in if (0 <= t) andalso (t <= 15)
         then m bs i t
         else if (16 <= t) andalso (t <= 79)
-        then lrot(Word32.xorb(Word32.xorb(w'(t-3),w'(t-8)),Word32.xorb(w'(t-14),w'(t-16))),0w1)
+        then lrot(w'(t-3) xorb w'(t-8) xorb w'(t-14) xorb w'(t-16),0w1)
         else raise Fail "t is out of range"
     end
 
