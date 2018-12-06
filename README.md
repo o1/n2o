@@ -6,9 +6,16 @@ Here is example echo server, using N2O HTTP static and WebSocket servers.
 Build
 -----
 
-```
+```bash
 $ mlton n2o.mlb && ./n2o
 $ ml-build n2o.cm Main.main n2o.nj && sml @SMLload=n2o.nj
+```
+
+Windows
+--------
+
+```bash
+> ml-build n2o-win.cm Main.main n2o-win.nj && sml @SMLload=n2o-win.nj
 ```
 
 Run
