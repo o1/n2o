@@ -91,9 +91,8 @@ fun hexstr (vec:V.vector):string =
              then "0" else "") ^ (Word8.toString e) ^ a) "" vec
 fun hex v = String.map Char.toLower (hexstr v)
 fun test (x, expected) = let
-    open SHA1
     val raw = Byte.stringToBytes x
-    val actual = hex (encode raw)
+    val actual = hex (SHA1.encode raw)
  in if expected = actual then ()
     else raise Fail ("\nExpected: " ^ expected  ^ "\n  actual: " ^ actual ^ "\n")
 end
