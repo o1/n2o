@@ -1,51 +1,45 @@
 <html>
-
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="" />
     <meta name="author" content="Maxim Sokhatsky" />
-    <title>SERVER</title>
+    <title>WEBSOCKET</title>
     <link rel="stylesheet" href="https://synrc.space/synrc.css" />
 </head>
-
 <body>
-
 <nav>
     <a href='https://n2o.space'>ECO</a>
     <a href='https://o1.network'>O1</a>
     <a href='../index.html'>N2O</a>
 </nav>
-
 <header>
     <a href="../index.html"><img src="https://o1.network/o1.svg"></a>
-    <h1>SERVER</h1>
+    <h1>WEBSOCKET</h1>
 </header>
-
 <main>
     <section>
         <h3>INTRO</h3>
-        <p>The <b>server</b> module provides static HTTP and WebSocket server.</p>
-    </section>
-    <section>
-        <h3>IO</h3>
-        <figure><figcaption>Listing 1. Request</figcaption><code>
- type Req = { cmd : string,
-              path : string,
-              headers : (string*string) list, vers : string }
+        <p>The <b>websocket</b> module provides RFC 6455 functions.</p>
+        <figure><figcaption>Listing 1. Frame Type</figcaption><code>
+ datatype FrameType = ContFrame
+                    | TextFrame
+                    | BinFrame
+                    | CloseFrame
+                    | PingFrame
+                    | PongFrame
         </code></figure>
-        <figure><figcaption>Listing 1. Response</figcaption><code>
- type Resp = { status : int,
-               headers : (string*string) list,
-               body : Word8Vector.vector }
+        <figure><figcaption>Listing 2. Frame</figcaption><code>
+ type Frame = { fin : bool,
+                rsv1 : bool, rsv2 : bool, rsv3 : bool,
+                typ : FrameType,
+                payload : Word8Vector.vector }
         </code></figure>
     </section>
 </main>
-
 <footer>
     Made with <span class="heart">❤</span> to Standard ML
 </footer>
-
 </body>
 </html>
