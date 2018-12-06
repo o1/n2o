@@ -26,7 +26,7 @@ fun check (len : W64.word) fin =
     else ()
 
 fun unmask key encoded =
-    Word8Vector.mapi (fn (i,el) => W8.xorb (el, V.sub (key, i mod 4))) encoded
+    V.mapi (fn (i,el) => W8.xorb (el, V.sub (key, i mod 4))) encoded
 
 fun send sock frame =
     raise Fail "not implemented: sendFrame"
@@ -52,7 +52,7 @@ fun recv sock : Frame =
                               | _ => raise Fail ("Unknown opcode: 0x" ^
                                                  (Word8.fmt StringCvt.HEX opcode))
         val mask = bytes sock 4
-        val payload = unmask mask (bytes sock (Word64.toInt len))
+        val payload = unmask mask (bytes sock (W64.toInt len))
      in { fin = fin, rsv1 = rsv1, rsv2 = rsv2, rsv3 = rsv3, typ = ft, payload = payload} end
 
 fun serve sock =
