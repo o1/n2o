@@ -71,7 +71,7 @@ fun loop_t wt t (h as (a,b,c,d,e)) =
       in loop_t wt (inc t) (tmp,a,lrot(b,0w30),c,d) end
 
 fun loop_i bs i (res as (h0,h1,h2,h3,h4)) =
-    if i = (V.length padded) div 64 then res
+    if i = (V.length bs) div 64 then res
     else let val wt = w bs i
              val (a,b,c,d,e) = loop_t wt 0 (h0,h1,h2,h3,h4)
          in loop_i bs (inc i) (h0+a,h1+b,h2+c,h3+d,h4+e) end
@@ -93,7 +93,6 @@ fun hex v = String.map Char.toLower (hexstr v)
 fun test (x, expected) = let
     open LargeWord
     open SHA1
-    infix <~
     val raw = Byte.stringToBytes x
     val actual = hex (encode raw)
  in if expected = actual then ()
