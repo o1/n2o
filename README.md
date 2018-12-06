@@ -6,16 +6,17 @@ Here is example echo server, using N2O HTTP static and WebSocket servers.
 Build
 -----
 
+Unix, Linux, Mac:
+
 ```bash
 $ mlton n2o.mlb && ./n2o
 $ ml-build n2o.cm Main.main n2o.nj && sml @SMLload=n2o.nj
 ```
 
-Windows
---------
+Windows:
 
 ```bash
-> ml-build n2o-win.cm Main.main n2o-win.nj && sml @SMLload=n2o-win.nj
+$ ml-build n2o-win.cm Main.main n2o-win.nj && sml @SMLload=n2o-win.nj
 ```
 
 Run
@@ -34,7 +35,7 @@ Measure
 -------
 
 ```
-tcpkali -T20s -r 100000 -c 2 -m PING —latency-marker "PING" —ws 127.0.0.1:8989/ws
+$ tcpkali -T20s -r 100000 -c 2 -m PING —latency-marker "PING" —ws 127.0.0.1:8989/ws
 Destination: [127.0.0.1]:8989
 Interface lo address [127.0.0.1]:0
 Using interface lo to connect to [127.0.0.1]:8989
