@@ -6,24 +6,19 @@ structure V = Word8Vector
 structure A = Word8Array
 structure AS = Word8ArraySlice
 
-datatype FrameType = ContFrame
-                   | TextFrame
-                   | BinFrame
-                   | CloseFrame
-                   | PingFrame
-                   | PongFrame
-
-type Frame = { fin : bool,
-               rsv1 : bool, rsv2 : bool, rsv3 : bool,
-               typ : FrameType, payload : V.vector }
+datatype FrameType = Cont | Text | Bin | Close | Ping | Pong
 
 datatype Msg = TxtMsg of V.vector (*TODO:utf8*)
              | BinMsg of V.vector
              | ClsMsg
 
 datatype Res = Error of string
-       | Reply of Msg
-       | Ok
+             | Reply of Msg
+             | Ok
+
+type Frame = { fin : bool,
+               rsv1 : bool, rsv2 : bool, rsv3 : bool,
+               typ : FrameType, payload : V.vector }
 
 fun bytes sock n = Socket.recvVec (sock, n)
 fun w8 sock = V.sub (Socket.recvVec (sock, 1), 0)
@@ -70,12 +65,12 @@ fun parse sock : Frame =
                                 | 0w127 => w64 sock
                                 | _     => Compat.w8_to_w64 lenflag
 
-        val ft = case opcode of 0wx0 => ContFrame
-                              | 0wx1 => TextFrame
-                              | 0wx2 => BinFrame
-                              | 0wx8 => (check len fin; CloseFrame)
-                              | 0wx9 => (check len fin; PingFrame)
-                              | 0wxA => (check len fin; PongFrame)
+        val ft = case opcode of 0wx0 => Cont
+                              | 0wx1 => Text
+                              | 0wx2 => Bin
+                              | 0wx8 => (check len fin; Close)
+                              | 0wx9 => (check len fin; Ping)
+                              | 0wxA => (check len fin; Pong)
                               | _ => raise Fail ("Unknown opcode: 0x" ^
                                                  (Word8.fmt StringCvt.HEX opcode))
         val mask = bytes sock 4
@@ -84,9 +79,9 @@ fun parse sock : Frame =
 
 fun recv sock : Msg =
     case (parse sock) of
-        {typ=CloseFrame,...}                 => ClsMsg
-      | {typ=BinFrame,payload=payload,...}  => BinMsg payload
-      | {typ=TextFrame,payload=payload,...} => TxtMsg payload
+        {typ=Close,...}                 => ClsMsg
+      | {typ=Bin,payload=payload,...}  => BinMsg payload
+      | {typ=Text,payload=payload,...} => TxtMsg payload
       | _ => raise (Fail "usupported message 0")
 
 fun echo (msg : Msg) : Res =
