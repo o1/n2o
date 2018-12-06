@@ -28,7 +28,7 @@ fun pad bs =
 
 local open Word32
       infix orb xorb andb << >>
-   in fun lrot(x,n)  = (x << n) orb (x >> Word.-(0w32,n))
+   in fun lrot (x,n)  = (x << n) orb (x >> Word.-(0w32,n))
       fun ch  (b,c,d) = (b andb c) orb ((notb b) andb d)
       fun par (b,c,d) = b xorb c xorb d
       fun maj (b,c,d) = (b andb c) orb (b andb d) orb (c andb d)
