@@ -100,8 +100,7 @@ fun sendResp sock {status=status,headers=headers,body=body} =
     (sendList sock ["HTTP/1.1 ", Int.toString status,
                             " ", respCode status, "\r\n",
                                  writeHeaders headers, "\r\n"];
-     sendBytes sock body;
-     sendStr sock "\r\n\r\n")
+     sendBytes sock body)
 
 fun sendError sock code body =
     (print body;
