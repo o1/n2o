@@ -129,8 +129,10 @@ fun serve sock : Resp =
 fun switch sock =
     case serve sock of
          resp => (sendResp sock resp;
-                  if (#status resp)<>101 then ignore (Socket.close sock)
-                                         else WebSocket.serve sock)
+                  if (#status resp) <> 101
+                  then ignore (Socket.close sock)
+                  else WebSocket.serve sock)
+
 fun connMain sock =
     switch sock
     handle BadRequest err => sendError sock 400 ("Bad Request: " ^ err ^ "\n")
