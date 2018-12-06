@@ -34,18 +34,11 @@ local open Word32
       fun maj (b,c,d) = (b andb c) orb (b andb d) orb (c andb d)
 end
 
-fun f (t,b,c,d) =
-         if (00 <= t) andalso (t <= 19) then ch(b,c,d)
-    else if (20 <= t) andalso (t <= 39) then par(b,c,d)
-    else if (40 <= t) andalso (t <= 59) then maj(b,c,d)
-    else if (60 <= t) andalso (t <= 79) then par(b,c,d)
-    else raise Fail "'t' is out of range"
-
-fun k (t) : w32 =
-         if (00 <= t) andalso (t <= 19) then 0wx5a827999
-    else if (20 <= t) andalso (t <= 39) then 0wx6ed9eba1
-    else if (40 <= t) andalso (t <= 59) then 0wx8f1bbcdc
-    else if (60 <= t) andalso (t <= 79) then 0wxca62c1d6
+fun fk t =
+    if      (00 <= t) andalso (t <= 19) then (ch, 0wx5a827999:w32)
+    else if (20 <= t) andalso (t <= 39) then (par,0wx6ed9eba1)
+    else if (40 <= t) andalso (t <= 59) then (maj,0wx8f1bbcdc)
+    else if (60 <= t) andalso (t <= 79) then (par,0wxca62c1d6)
     else raise Fail "'t' is out of range"
 
 fun m bs i t : w32 =
@@ -67,7 +60,8 @@ fun w bs i t =
 fun loop_t wt t (h as (a,b,c,d,e)) =
     if (t = 80) then h
     else let open Word32
-         val tmp = lrot(a,0w5) + f(t,b,c,d) + e + k(t) + wt(t)
+             val (f,k) = fk(t)
+             val tmp = lrot(a,0w5) + f(b,c,d) + e + k + wt(t)
       in loop_t wt (inc t) (tmp,a,lrot(b,0w30),c,d) end
 
 fun loop_i bs i (res as (h0,h1,h2,h3,h4)) =
