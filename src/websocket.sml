@@ -96,9 +96,9 @@ fun echo (msg : Msg) : Res =
     handle (Fail err) => Error err
 
 fun serve sock =
-    let val _ = print "serving ws..\n"
+    let (*val _ = print "serving ws..\n"*)
         val msg = recv sock
-    in print "got msg\n";
+    in (*print "got msg\n";*)
        (case echo msg of
             Error err => (print err; print "\n"; Socket.close sock)
           | Reply msg => send sock msg

@@ -119,7 +119,8 @@ fun serve sock : Resp =
         val path = #path req
         val reqPath = router path
      in if needUpgrade req
-        then (print "need upgrade\n"; upgrade sock req)
+        then ((*print "need upgrade\n"; *)
+              upgrade sock req)
         else (fileResp ("static/html" ^ reqPath ^ ".html"))
              handle Io => (fileResp (String.extract (path, 1, NONE)))
              handle Io => raise NotFound path
@@ -139,7 +140,7 @@ fun connMain sock =
 
 fun acceptLoop server_sock =
     let val (s, _) = Socket.accept server_sock
-     in print "Accepted a connection.\n";
+     in (*print "Accepted a connection.\n";*)
         CML.spawn (fn () => connMain(s));
         acceptLoop server_sock
     end
@@ -149,7 +150,7 @@ fun run (program_name, arglist) =
      in Socket.Ctl.setREUSEADDR (s, true);
         Socket.bind(s, INetSock.any 8989);
         Socket.listen(s, 5);
-        print "Entering accept loop...\n";
+        print "n2o server...\n";
         acceptLoop s
     end
 end
