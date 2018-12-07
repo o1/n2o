@@ -62,7 +62,6 @@ end
 
 structure CompatTest = struct
 
-
 fun test() =
     let val exp = Word8Vector.fromList[0wxAA,0wxBB]
         val arr = Word8Array.array(2,0w0);
