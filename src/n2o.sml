@@ -10,10 +10,12 @@ signature N2O = sig
     type Cx
     type Prot
     type Res
-    val run : Cx -> Prot -> Res
+    structure P : PROTO
+    val run : Cx -> P.Prot -> P.Res
 end
 
 functor N2O(M : PROTO) : N2O = struct
+    structure P = M
     datatype Cx = Cx of { req : M.Req, module :  M.Ev -> M.Res, handlers : Hnd list }
     withtype Hnd = Cx -> Cx
     fun run (cx : Cx) (msg : M.Prot) : M.Res =
