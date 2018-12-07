@@ -8,6 +8,8 @@ addons:
       - mlton
       - smlnj
       - libcml-smlnj
+      - libcmlutil-smlnj
+      - libsmlnj-smlnj
 
 
 script:
