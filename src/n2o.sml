@@ -8,8 +8,6 @@ end
 
 signature N2O = sig
     type Cx
-    type Prot
-    type Res
     structure P : PROTO
     val run : Cx -> P.Prot -> P.Res
 end
