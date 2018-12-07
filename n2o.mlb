@@ -6,6 +6,7 @@ src/compat.sml
 src/sha1.sml
 src/n2o.sml
 src/websocket.sml
+src/server.fun
 src/server.sml
 src/main-mlton.sml
 src/utf8.sml

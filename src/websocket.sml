@@ -104,21 +104,18 @@ fun recv sock : Msg =
       | {typ=Bin,payload,...} => BinMsg payload
       | {typ=Cont,payload,...} => ContMsg payload
 
-fun echo (msg : Msg) : Res =
-    (case msg of
-         (CloseMsg b) => (print ("Received close message: code "^(Word32.fmt StringCvt.DEC b)^"\n"); Ok)
-       | PingMsg => Reply PongMsg
-       | PongMsg => Ok
-       | ContMsg _ => raise Fail "cont frame"
-       | _ => Reply msg)
-    handle (Fail err) => Error err
-
-fun serve sock =
+fun serve sock (hnd : Msg -> Res) =
     let val msg = recv sock
-    in (case echo msg of
-            Error err => (print err; print "\n"; Socket.close sock)
-          | Reply msg => send sock msg
-          | _ => ());
-       serve sock
+    in (case msg of
+           PongMsg => ()
+         | PingMsg => send sock PongMsg
+         | (CloseMsg b) => print ("Received close message: code "^(Word32.fmt StringCvt.DEC b)^"\n")
+         | ContMsg _ => raise Fail "cont frame"
+         | msg' =>
+           case hnd msg' of
+                Error err => (print err; print "\n"; Socket.close sock)
+              | Reply msg => send sock msg
+              | _ => ());
+       serve sock hnd
     end
 end

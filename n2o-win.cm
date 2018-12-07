@@ -4,6 +4,7 @@ Group is
         $cml-lib/smlnj-lib.cm
         src/n2o.sml
         src/websocket.sml
+        src/server.fun
         src/server.sml
         src/utf8.sml
         src/compat.sml
