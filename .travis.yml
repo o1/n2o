@@ -9,7 +9,7 @@ addons:
       - libcmlutil-smlnj
       - libsmlnj-smlnj
 
-before-install:
+before_install:
   - git clone https://github.com/MLton/mlton MLton/mlton
   - cd MLton/mlton
   - make all
