@@ -4,6 +4,7 @@ language: generic
 addons:
   apt:
     packages:
+      - mlton
       - smlnj
       - libcml-smlnj
       - libcmlutil-smlnj
