@@ -26,11 +26,10 @@ structure Example : PROTO = struct
   datatype Ev = Start of string | Message of string | Done
   type Res = WebSocket.Res
   type Req = Server.Req
-  datatype Nitro = Init of string
+  datatype Prot = Init of string
                  | Pickle of string*string*((string*string) list)
                  | Terminate
                  | IO of string*string
-  type Prot = Nitro
   fun proto msg = case msg of
                       (Init s) => Start s
                     | (Pickle _) => (print "got pickled msg\n"; Message "hi")
