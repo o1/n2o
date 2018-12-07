@@ -14,12 +14,9 @@ signature N2O = sig
 end
 
 functor N2O(M : PROTO) : N2O = struct
-    type Prot = M.Prot
-    type Res = M.Res
-    type Req = M.Req
-    datatype Cx = Cx of { req : Req, module :  M.Ev -> M.Res, handlers : Hnd list }
+    datatype Cx = Cx of { req : M.Req, module :  M.Ev -> M.Res, handlers : Hnd list }
     withtype Hnd = Cx -> Cx
-    fun run (cx : Cx) (msg : Prot) : Res =
+    fun run (cx : Cx) (msg : M.Prot) : M.Res =
         case cx of
             Cx {module,handlers,...} =>
             (List.foldr (fn (h,c) => h c) cx handlers;
