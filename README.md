@@ -5,6 +5,7 @@ Here is example echo server, using N2O HTTP static and WebSocket servers.
 
 Build
 -----
+[![Build Status](https://travis-ci.org/o1/n2o.svg?branch=master)](https://travis-ci.org/o1/n2o)
 
 Unix, Linux, Mac:
 
