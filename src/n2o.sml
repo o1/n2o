@@ -14,8 +14,7 @@ end
 
 functor N2O(M : PROTO) : N2O = struct
     structure P = M
-    datatype Cx = Cx of { req : M.Req, module :  M.Ev -> M.Res, handlers : Hnd list }
-    withtype Hnd = Cx -> Cx
+    datatype Cx = Cx of { req : M.Req, module : M.Ev -> M.Res, handlers : (Cx -> Cx) list }
     fun run (cx : Cx) (msg : M.Prot) : M.Res =
         case cx of
             Cx {module,handlers,...} =>
