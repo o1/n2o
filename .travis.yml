@@ -1,0 +1,14 @@
+sudo: false
+language: generic
+
+# Ensure necessary system libraries are present
+addons:
+  apt:
+    packages:
+      - mlton
+      - smlnj
+
+
+script:
+- mlton -output n2o.exe n2o.mlb
+- ml-build n2o.cm Main.main n2o.nj
