@@ -1,16 +1,19 @@
 sudo: false
 language: generic
 
-# Ensure necessary system libraries are present
 addons:
   apt:
     packages:
-      - mlton
       - smlnj
       - libcml-smlnj
       - libcmlutil-smlnj
       - libsmlnj-smlnj
 
+before-install:
+  - git clone https://github.com/MLton/mlton MLton/mlton
+  - cd MLton/mlton
+  - make all
+  - make install
 
 script:
 - mlton -output n2o.exe n2o.mlb
