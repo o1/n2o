@@ -21,7 +21,7 @@ type Frame = { fin : bool,
                typ : FrameType, payload : V.vector }
 
 fun bytes sock n = Socket.recvVec (sock, n)
-fun w8 sock = V.sub (Socket.recvVec (sock, 1), 0)
+fun w8  sock = V.sub (bytes sock 1, 0)
 fun w16 sock = Compat.extract_w16be (bytes sock 2)
 fun w64 sock = Compat.extract_w64be (bytes sock 8)
 
@@ -44,11 +44,14 @@ fun body (TxtMsg x) = x
 fun send sock (msg : Msg) : unit =
     let val payload = body msg
         val len = V.length payload
-        val arr = A.array (len+2,0w0)
-    in (if (len > 127) orelse (len < 0) then raise (Fail "0 < len msg < 127") else ());
-       A.update(arr,0,W8.orb(0wx80,opcode msg));
-       A.update(arr,1,W8.fromInt len);
-       A.copyVec {src=payload,dst=arr,di=2};
+        val (b1,di,pack) = if len < 126   then (W8.fromInt(len),2,fn _ => ())
+                      else if len < 65535 then (0w126,4,Compat.pack_w16be)
+                      else                     (0w127,10,Compat.pack_w64be)
+        val arr = A.array (len+di,0w0)
+    in A.update(arr,0,W8.orb(0wx80,opcode msg));
+       A.update(arr,1,b1);
+       pack(arr,2,W64.fromInt(len));
+       A.copyVec {src=payload,dst=arr,di=di};
        Socket.sendArr(sock,AS.full(arr));
        ()
     end
