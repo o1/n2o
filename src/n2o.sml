@@ -1,34 +1,38 @@
 signature PROTO = sig
-    type a (* type param *)
     type Prot (* Input type for protocol handler *)
     type Ev (* Output type for protocol handler and input type for event handler *)
-    type Res (* Output type for event handler *)
+    type Res
+    type Req
     val proto : Prot -> Ev
 end
 
-functor N2O(M : PROTO) = struct
+signature N2O = sig
+    type Cx
+    type Prot
+    type Res
+    val run : Cx -> Prot -> Res
+end
 
-  type Req = { path : string,
-               method : string,
-               version : string,
-               headers : (string * string) list }
+functor N2O(M : PROTO) : N2O = struct
 
-  datatype Cx = Cx of { req : Req, module :  M.Ev -> M.Res, handlers : Hnd list }
-  withtype Hnd = Cx -> Cx
+    type Prot = M.Prot
+    type Res = M.Res
+    type Req = M.Req
+    datatype Cx = Cx of { req : Req, module :  M.Ev -> M.Res, handlers : Hnd list }
+    withtype Hnd = Cx -> Cx
 
-  fun run (cx : Cx) (msg : M.Prot) : M.Res =
-      case cx of
-          Cx {module,handlers,...} =>
-          (List.foldr (fn (h,c) => h c) cx handlers;
-           module (M.proto msg))
+    fun run (cx : Cx) (msg : Prot) : Res =
+        case cx of
+            Cx {module,handlers,...} =>
+            (List.foldr (fn (h,c) => h c) cx handlers;
+             module (M.proto msg))
 end
 
 structure Example : PROTO = struct
 
-  type a = string
-
-  datatype Ev = Start of string | Message of a | Done
-  datatype Res = Reply of a | Error of string | Ok
+  datatype Ev = Start of string | Message of string | Done
+  type Res = WebSocket.Res
+  type Req = Server.Req
 
   datatype Nitro = Init of string
                  | Pickle of string*string*((string*string) list)

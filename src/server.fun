@@ -1,4 +1,7 @@
-functor MkServer(M : sig val hnd : WebSocket.Msg -> WebSocket.Res end) =
+signature WS_HANDLER = sig
+    val hnd : WebSocket.Msg -> WebSocket.Res
+end
+functor MkServer(M : WS_HANDLER) =
 struct
 
 type Req = { cmd : string,
