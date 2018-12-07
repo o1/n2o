@@ -14,13 +14,11 @@ signature N2O = sig
 end
 
 functor N2O(M : PROTO) : N2O = struct
-
     type Prot = M.Prot
     type Res = M.Res
     type Req = M.Req
     datatype Cx = Cx of { req : Req, module :  M.Ev -> M.Res, handlers : Hnd list }
     withtype Hnd = Cx -> Cx
-
     fun run (cx : Cx) (msg : Prot) : Res =
         case cx of
             Cx {module,handlers,...} =>
@@ -29,24 +27,19 @@ functor N2O(M : PROTO) : N2O = struct
 end
 
 structure Example : PROTO = struct
-
   datatype Ev = Start of string | Message of string | Done
   type Res = WebSocket.Res
   type Req = Server.Req
-
   datatype Nitro = Init of string
                  | Pickle of string*string*((string*string) list)
                  | Terminate
                  | IO of string*string
-
   type Prot = Nitro
-
   fun proto msg = case msg of
                       (Init s) => Start s
                     | (Pickle _) => (print "got pickled msg\n"; Message "hi")
                     | Terminate => Done
                     | _ => Message "unknown message"
-
 end
 
 structure ExN2O = N2O(Example)
