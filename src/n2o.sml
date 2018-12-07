@@ -1,37 +1,48 @@
 signature PROTO = sig
-    type 'a Prot
+    type a (* type param *)
+    type Prot (* Input type for protocol handler *)
+    type Ev (* Output type for protocol handler and input type for event handler *)
+    type Res (* Output type for event handler *)
+    val proto : Prot -> Ev
 end
 
 functor N2O(M : PROTO) = struct
 
-type 'a Prot = 'a M.Prot (* Input type for protocol handler *)
-datatype 'a Ev = Init | Message of 'a | Terminate (* Output type for protocol handler and input type for event handler *)
-datatype 'a Res = Reply of 'a | Ok | Error (* Output type for event handler *)
+  type Req = { path : string,
+               method : string,
+               version : string,
+               headers : (string * string) list }
 
-type Req = { path : string,
-             method : string,
-             version : string,
-             headers : (string * string) list }
+  datatype Cx = Cx of { req : Req, module :  M.Ev -> M.Res, handlers : Hnd list }
+  withtype Hnd = Cx -> Cx
 
-datatype 'a Cx = Cx of { req : Req, proto : 'a Prot -> 'a Ev,  module : 'a Ev -> 'a Res, handlers : ('a Hnd) list }
-withtype 'a Hnd = 'a Cx -> 'a Cx
-
-fun run (cx :'a Cx) (msg : 'a Prot) : 'a Res =
-    case cx of
-        Cx {module,handlers,proto,...} =>
-        (List.foldr (fn (h,c) => h c) cx handlers;
-         module (proto msg))
+  fun run (cx : Cx) (msg : M.Prot) : M.Res =
+      case cx of
+          Cx {module,handlers,...} =>
+          (List.foldr (fn (h,c) => h c) cx handlers;
+           module (M.proto msg))
 end
 
 structure Example : PROTO = struct
 
-datatype 'a Nitro = Init of string
-                  | Pickle of string*string*((string*string) list)
-                  | Done
+  type a = string
 
-datatype 'a N2OProt = Nitro of 'a
-                    | IO of string*string
-type 'a Prot = 'a Nitro
+  datatype Ev = Start of string | Message of a | Done
+  datatype Res = Reply of a | Error of string | Ok
+
+  datatype Nitro = Init of string
+                 | Pickle of string*string*((string*string) list)
+                 | Terminate
+                 | IO of string*string
+
+  type Prot = Nitro
+
+  fun proto msg = case msg of
+                      (Init s) => Start s
+                    | (Pickle _) => (print "got pickled msg\n"; Message "hi")
+                    | Terminate => Done
+                    | _ => Message "unknown message"
+
 end
 
 structure ExN2O = N2O(Example)
