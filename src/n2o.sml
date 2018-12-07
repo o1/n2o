@@ -1,4 +1,8 @@
-functor N2O(M : sig type 'a Prot end) = struct
+signature PROTO = sig
+    type 'a Prot
+end
+
+functor N2O(M : PROTO) = struct
 
 type 'a Prot = 'a M.Prot (* Input type for protocol handler *)
 datatype 'a Ev = Init | Message of 'a | Terminate (* Output type for protocol handler and input type for event handler *)
@@ -19,7 +23,7 @@ fun run (cx :'a Cx) (msg : 'a Prot) : 'a Res =
          module (proto msg))
 end
 
-structure Ex = struct
+structure Example : PROTO = struct
 
 datatype 'a Nitro = Init of string
                   | Pickle of string*string*((string*string) list)
@@ -27,5 +31,7 @@ datatype 'a Nitro = Init of string
 
 datatype 'a N2OProt = Nitro of 'a
                     | IO of string*string
-
+type 'a Prot = 'a Nitro
 end
+
+structure ExN2O = N2O(Example)
