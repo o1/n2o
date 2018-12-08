@@ -6,8 +6,8 @@ signature PROTO = sig
     val proto : Prot -> Ev
 end
 
-signature N2O = sig
-    type Cx
-    structure P : PROTO
-    val run : Cx -> (Cx -> Cx) list -> P.Prot -> P.Res
+functor MkN2O(M : PROTO) = struct
+type Cx = {req: M.Req, module: M.Ev -> M.Res}
+fun run (cx : Cx) (handlers : (Cx -> Cx) list) (msg : M.Prot) =
+    (#module cx) (M.proto msg)
 end
