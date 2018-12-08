@@ -1,1 +1,5 @@
-structure Server = MkServer(struct val hnd = WebSocket.Reply end)
+structure EchoHandler : HANDLER = struct
+    fun hnd (_,msg) = msg
+end
+
+structure Server = MkServer(EchoHandler)

@@ -9,32 +9,5 @@ end
 signature N2O = sig
     type Cx
     structure P : PROTO
-    val run : Cx -> P.Prot -> P.Res
+    val run : Cx -> (Cx -> Cx) list -> P.Prot -> P.Res
 end
-
-functor N2O(M : PROTO) : N2O = struct
-    structure P = M
-    datatype Cx = Cx of { req : M.Req, module : M.Ev -> M.Res, handlers : (Cx -> Cx) list }
-    fun run (cx : Cx) (msg : M.Prot) : M.Res =
-        case cx of
-            Cx {module,handlers,...} =>
-            (List.foldr (fn (h,c) => h c) cx handlers;
-             module (M.proto msg))
-end
-
-structure Example : PROTO = struct
-  datatype Ev = Start of string | Message of string | Done
-  type Res = WebSocket.Res
-  type Req = Server.Req
-  datatype Prot = Init of string
-                 | Pickle of string*string*((string*string) list)
-                 | Terminate
-                 | IO of string*string
-  fun proto msg = case msg of
-                      (Init s) => Start s
-                    | (Pickle _) => (print "got pickled msg\n"; Message "hi")
-                    | Terminate => Done
-                    | _ => Message "unknown message"
-end
-
-structure ExN2O = N2O(Example)

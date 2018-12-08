@@ -1,16 +1,21 @@
-signature WS_HANDLER = sig
-    val hnd : WebSocket.Msg -> WebSocket.Res
-end
-functor MkServer(M : WS_HANDLER) =
-struct
-
+structure HTTP = struct
+type Headers = (string*string) list
 type Req = { cmd : string,
              path : string,
-             headers : (string*string) list, vers : string }
-
+             headers : Headers, vers : string }
 type Resp = { status : int,
-              headers : (string*string) list,
+              headers : Headers,
               body : Word8Vector.vector }
+end
+
+signature HANDLER = sig
+    val hnd : HTTP.Req*WebSocket.Msg -> WebSocket.Res
+end
+
+functor MkServer(M : HANDLER) = struct
+
+type Req = HTTP.Req
+type Resp = HTTP.Resp
 
 exception BadRequest of string
 exception NotFound of string
@@ -118,24 +123,22 @@ fun router path =
                 then String.extract (p, 3, NONE)
                 else p
 
-fun serve sock : Resp =
+fun serve sock : Req*Resp =
     let val req = parseReq (Word8VectorSlice.full (Socket.recvVec (sock, 2048)))
         val path = #path req
         val reqPath = router path
-     in if needUpgrade req
-        then ((*print "need upgrade\n"; *)
-              upgrade sock req)
-        else (fileResp ("static/html" ^ reqPath ^ ".html"))
-             handle Io => (fileResp (String.extract (path, 1, NONE)))
+     in if needUpgrade req then (req, upgrade sock req)
+        else (req, fileResp ("static/html" ^ reqPath ^ ".html"))
+             handle Io => (req, fileResp (String.extract (path, 1, NONE)))
              handle Io => raise NotFound path
     end
 
 fun switch sock =
     case serve sock of
-         resp => (sendResp sock resp;
-                  if (#status resp) <> 101
-                  then ignore (Socket.close sock)
-                  else WebSocket.serve sock M.hnd)
+        (req, resp) => (sendResp sock resp;
+                        if (#status resp) <> 101
+                        then ignore (Socket.close sock)
+                        else WebSocket.serve sock (fn msg => (M.hnd (req,msg))))
 
 fun connMain sock =
     switch sock
