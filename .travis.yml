@@ -1,4 +1,4 @@
-sudo: false
+# sudo: false
 language: generic
 
 addons:
@@ -10,13 +10,9 @@ addons:
       - libcmlutil-smlnj
       - libsmlnj-smlnj
 
-# before_install:
-#   # Need recent mlton
-#   - git clone https://github.com/MLton/mlton MLton/mlton
-#   - cd MLton/mlton
-#   - make all
-#   - make install
-
+before_install:
+- if command -v apt-get &>/dev/null; then sudo apt-get update -qq; fi
+- if command -v apt-get &>/dev/null; then sudo apt-get install -y mlton; fi#   #
 script:
-# - mlton -output n2o.exe n2o.mlb
+- mlton -output n2o.exe n2o.mlb
 - ml-build n2o.cm Main.main n2o.nj
