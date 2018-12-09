@@ -12,7 +12,8 @@ addons:
 
 before_install:
 - if command -v apt-get &>/dev/null; then sudo apt-get update -qq; fi
-- if command -v apt-get &>/dev/null; then sudo apt-get install -y mlton; fi#   #
+- if command -v apt-get &>/dev/null; then sudo apt-get install -y mlton; fi
+
 script:
 - mlton -output n2o.exe n2o.mlb
 - ml-build n2o.cm Main.main n2o.nj
