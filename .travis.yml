@@ -10,11 +10,16 @@ addons:
       - libcmlutil-smlnj
       - libsmlnj-smlnj
 
+cache:
+  directories:
+  - $HOME/.mlton
+      
 before_install:
 - git clone https://github.com/MLton/mlton
 - cd MLton/mlton
 - make all
-- sudo make install
+- sudo make PREFIX=$HOME/.mlton install
+- export PATH=$HOME/.mlton/bin:$PATH
  
 script:
 - mlton
