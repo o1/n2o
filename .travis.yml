@@ -15,7 +15,7 @@ cache:
   - $HOME/.mlton
       
 before_install:
-- git clone https://github.com/MLton/mlton
+- git clone https://github.com/MLton/mlton MLton/mlton
 - cd MLton/mlton
 - make all
 - sudo make PREFIX=$HOME/.mlton install
