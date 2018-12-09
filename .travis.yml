@@ -4,16 +4,18 @@ language: generic
 addons:
   apt:
     packages:
-      # - mlton
+      - mlton
       - smlnj
       - libcml-smlnj
       - libcmlutil-smlnj
       - libsmlnj-smlnj
 
 before_install:
-- if command -v apt-get &>/dev/null; then sudo apt-get update -qq; fi
-- if command -v apt-get &>/dev/null; then sudo apt-get install -y mlton; fi
-
+- git clone https://github.com/MLton/mlton
+- cd MLton/mlton
+- make all
+- sudo make install
+ 
 script:
 - mlton
 - mlton -output n2o.exe n2o.mlb
