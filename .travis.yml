@@ -9,12 +9,16 @@ addons:
       - libcml-smlnj
       - libcmlutil-smlnj
       - libsmlnj-smlnj
+      - wget
 
-cache:
-  directories:
-  - $HOME/.mlton
+#cache:
+#  directories:
+#  - $HOME/.mlton
       
 before_install:
+- wget https://github.com/MLton/mlton/releases/download/on-20180207-release/mlton-20180207-1.amd64-linux.tgz
+- tar -xzf mlton-20180207-1.amd64-linux.tgz
+- mv mlton-20180207-1.amd64-linux.tgz $HOME/.mlton
 # - git clone https://github.com/MLton/mlton MLton/mlton
 # - cd MLton/mlton
 # - make all
