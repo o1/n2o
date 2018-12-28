@@ -23,12 +23,7 @@
         <h3>INTRO</h3>
         <p>The <b>websocket</b> module provides RFC 6455 functions.</p>
         <figure><figcaption>Listing 1. Frame Type</figcaption><code>
- datatype FrameType = ContFrame
-                    | TextFrame
-                    | BinFrame
-                    | CloseFrame
-                    | PingFrame
-                    | PongFrame
+ datatype FrameType = Cont | Text | Bin | Close | Ping | Pong
         </code></figure>
         <figure><figcaption>Listing 2. Frame</figcaption><code>
  type Frame = { fin : bool,
@@ -36,6 +31,11 @@
                 typ : FrameType,
                 payload : Word8Vector.vector }
         </code></figure>
+    </section>
+    <section>
+        <h3>API</h3>
+        <p></p>
+        <h4>serve : Socket -> </h4>
     </section>
 </main>
 <footer>

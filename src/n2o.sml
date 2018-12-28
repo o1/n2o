@@ -1,8 +1,7 @@
 signature PROTO = sig
     type Prot (* Input type for protocol handler *)
     type Ev (* Output type for protocol handler and input type for event handler *)
-    type Res
-    type Req
+    type Res type Req
     val proto : Prot -> Ev
 end
 
