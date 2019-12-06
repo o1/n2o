@@ -5,6 +5,7 @@ addons:
   apt:
     packages:
  #     - mlton
+      - mlton-compiler
       - smlnj
       - libcml-smlnj
       - libcmlutil-smlnj
