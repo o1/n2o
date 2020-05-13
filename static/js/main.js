@@ -6,7 +6,7 @@ ws.onopen = () => {
         document.getElementById('echo').innerText=e.data;
     };
 };
-document.getElementById('submit').addEventListener('submit', (e) => {
+document.getElementById('message').addEventListener('input', (e) => {
     e.stopPropagation();
     e.preventDefault();
     ws.send(document.getElementById('message').value);
